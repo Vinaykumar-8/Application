@@ -1,0 +1,1275 @@
+import 'dart:html';
+import 'dart:math';
+import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'encryption_service.dart';
+import 'package:flutter/material.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyCcDfWlW0q0QtIuSR--Mc3tA8c3_ydEwxo",
+      appId: "1:265129801654:web:e484282f2f1d82f3837317",
+      messagingSenderId: "265129801654",
+      projectId: "knot-messenger-fe813",
+      authDomain: "knot-messenger-fe813.firebaseapp.com",
+      storageBucket: "knot-messenger-fe813.firebasestorage.app",
+    ),
+  );
+  runApp(const KnotApp());
+}
+
+class KnotApp extends StatelessWidget {
+  const KnotApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.teal,
+            brightness: Brightness.light,
+          ),
+        ),
+        home: const LoginPage());
+  }
+}
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _controller_one = TextEditingController();
+  final TextEditingController _controller_two = TextEditingController();
+  final TextEditingController _controller_three = TextEditingController();
+  final _keyform = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  Future<void> _checkState() async {
+    if (!_keyform.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    try {
+      final keys = await EncryptionService.generateRSAkeysAsync();
+      final publicKeyString = keys['public']!;
+      final privateKeyString = keys['private']!;
+
+      print("CHECK: Keys has been produced");
+      print("CHECK: PublicKey is: ${publicKeyString.substring(0, 30)}");
+      print("CHECK: PrivateKey is: ${privateKeyString.substring(0, 30)}");
+
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _controller_one.text.trim(),
+        password: _controller_three.text.trim(),
+      );
+      String knotID = (10000 + Random().nextInt(90000)).toString();
+      await userCredential.user?.updateDisplayName(_controller_two.text.trim());
+      await EncryptionService().savePrivateKey(privateKeyString);
+
+      print("PrivateKey has been stored");
+      print("VERIFICATION___:");
+
+      String? retreivedKey = await EncryptionService().getPrivateKey();
+
+      print("---DEBUG: Step 3 matching the keys");
+      if (retreivedKey == null) {
+        print("Critical Error: The privateKey is null");
+      } else {
+        print("Retreived Key : ${retreivedKey.substring(0, 30)}");
+        bool isMatch = privateKeyString.trim() == retreivedKey.trim();
+        print("Keys Match: ${isMatch ? 'Keys Matched' : 'Keys do not match'}");
+      }
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'name': _controller_two.text.trim(),
+        'email': _controller_one.text.trim(),
+        'knotID': knotID,
+        'publicKey': publicKeyString,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      _showError(e.message ?? "Registration Failed");
+    } catch (e) {
+      _showError("System Error: $e");
+      print("Full Error Debug: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(message,
+              style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'serif',
+              )),
+          backgroundColor: Colors.red),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "Knot Register Page",
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/register_icon.jpeg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Form(
+            key: _keyform,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 4),
+                          const Text("Register",
+                              style: TextStyle(
+                                color: Color(0xffcda325),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 30,
+                                fontFamily: 'serif',
+                              )),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                              controller: _controller_one,
+                              decoration: InputDecoration(
+                                filled: true,
+                                prefixIcon: Icon(Icons.email_outlined,
+                                    color: Colors.teal),
+                                labelText: "Enter Your Email",
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    color: Colors.teal,
+                                    width: 1.7,
+                                  ),
+                                ),
+                                errorStyle: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontFamily: 'serif',
+                                  fontSize: 12,
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    color: Colors.redAccent,
+                                    width: 1.9,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return "Kindly Fill All The Details.";
+                                if (!value.contains('@'))
+                                  return "Kindly Enter A Valid Value.";
+                                return null;
+                              }),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                              controller: _controller_two,
+                              decoration: InputDecoration(
+                                  filled: true,
+                                  prefixIcon: Icon(Icons.person_outlined,
+                                      color: Colors.teal),
+                                  labelText: "Enter Your Name",
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(
+                                      color: Colors.teal,
+                                      width: 1.7,
+                                    ),
+                                  ),
+                                  errorStyle: const TextStyle(
+                                    color: Colors.redAccent,
+                                    fontFamily: 'serif',
+                                    fontSize: 12,
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: Colors.redAccent,
+                                        width: 1.9,
+                                      ))),
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return "Kindly Fill All The Details.";
+                                return null;
+                              }),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                              controller: _controller_three,
+                              obscureText: true,
+                              decoration: InputDecoration(
+                                  filled: true,
+                                  prefixIcon:
+                                      Icon(Icons.key, color: Color(0xffea6636)),
+                                  labelText: "Set Your Password",
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(
+                                      color: Colors.teal,
+                                      width: 1.7,
+                                    ),
+                                  ),
+                                  errorStyle: const TextStyle(
+                                    color: Colors.redAccent,
+                                    fontSize: 12,
+                                    fontFamily: 'serif',
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(
+                                        color: Colors.redAccent, width: 1.9),
+                                  )),
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return "Kindly Fill All The Details.";
+                                if (value.length < 6 || value.length > 12)
+                                  return "Kindly keep the length less than 12 and more than 6 characters.";
+                                return null;
+                              }),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            child: ElevatedButton(
+                                onPressed: _isLoading ? null : _checkState,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text("Register",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16))),
+                            height: 40,
+                            width: 140,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  height: 320,
+                  width: 340,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final _keyform = GlobalKey<FormState>();
+  bool _isloading = false;
+
+  Future<void> _updateRoute() async {
+    if (!_keyform.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isloading = true;
+    });
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ContentPage(),
+          ));
+
+      setState(() {
+        _isloading = false;
+      });
+    } on FirebaseAuthException catch (e) {
+      String message = "An error occurred";
+      if (e.code == 'user-not-found')
+        message = "No user found for that email.";
+      else if (e.code == 'wrong-password') message = "Wrong password provided.";
+
+      _showError(message);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(message,
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'serif',
+            )),
+        backgroundColor: Colors.red));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Knot Login Page",
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+            )),
+        centerTitle: true,
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/icon.jpeg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Form(
+            key: _keyform,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 4),
+                          const Text("Login",
+                              style: TextStyle(
+                                color: Color(0xffcda325),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 30,
+                                fontFamily: 'serif',
+                              )),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                              controller: _emailController,
+                              decoration: InputDecoration(
+                                filled: true,
+                                prefixIcon: Icon(Icons.person_outline,
+                                    color: Colors.teal),
+                                labelText: "Enter Your Email",
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    color: Colors.teal,
+                                    width: 1.7,
+                                  ),
+                                ),
+                                errorStyle: const TextStyle(
+                                  color: Colors.red,
+                                  fontFamily: 'verdana',
+                                  fontSize: 12,
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    color: Colors.red,
+                                    width: 1.9,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return "Kindly Fill All The Fields.";
+                                if (!value.contains('@'))
+                                  return "Kindly Enter A Valid Email.";
+                                return null;
+                              }),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                              controller: _passwordController,
+                              obscureText: true,
+                              decoration: InputDecoration(
+                                filled: true,
+                                prefixIcon:
+                                    Icon(Icons.key, color: Color(0xffea6636)),
+                                labelText: "Enter Your Password",
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    color: Colors.teal,
+                                    width: 1.7,
+                                  ),
+                                ),
+                                errorStyle: const TextStyle(
+                                  color: Colors.red,
+                                  fontFamily: 'verdana',
+                                  fontSize: 12,
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    color: Colors.red,
+                                    width: 1.9,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return "Kindly Fill All The Fields.";
+                                if (value.length < 6 || value.length > 12)
+                                  return "Kindly Enter Valid Password";
+                                return null;
+                              }),
+                          const SizedBox(height: 9),
+                          SizedBox(
+                            child: ElevatedButton(
+                              onPressed: _updateRoute,
+                              style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.teal,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12))),
+                              child: _isloading
+                                  ? CircularProgressIndicator(
+                                      color: Colors.orange,
+                                    )
+                                  : const Text("Login",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      )),
+                            ),
+                            height: 40,
+                            width: 100,
+                          ),
+                          const SizedBox(height: 7),
+                          TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => RegisterScreen()),
+                                );
+                              },
+                              child: const Text("Don'tHaveAnAccount?",
+                                  style: TextStyle(
+                                    color: Color(0xff093e69),
+                                    fontFamily: 'monospace',
+                                  )))
+                        ],
+                      ),
+                    ),
+                  ),
+                  height: 330,
+                  width: 340,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MainPage extends StatelessWidget {
+  const MainPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color(0xff0f5a12),
+          brightness: Brightness.light,
+        ),
+      ),
+      home: const ContentPage(),
+    );
+  }
+}
+
+class ContentPage extends StatefulWidget {
+  const ContentPage({super.key});
+  final selectedIndex = 0;
+
+  @override
+  State<ContentPage> createState() => _ContentPageState(selectedIndex: 0);
+}
+
+class _ContentPageState extends State<ContentPage> {
+  _ContentPageState({required this.selectedIndex});
+  int selectedIndex;
+  final List<Widget> tabs = [
+    const ChatScreen(),
+    const ConversationScreen(),
+    const ProfileScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: tabs[selectedIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (int index) {
+          setState(() {
+            selectedIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.chat_outlined, color: Colors.blueAccent),
+            selectedIcon: Icon(Icons.chat_bubble, color: Color(0xff05345a)),
+            label: "Chats",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.group_outlined, color: Colors.blueAccent),
+            selectedIcon: Icon(Icons.group, color: Color(0xff05345a)),
+            label: "Connections",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline, color: Colors.blueAccent),
+            selectedIcon: Icon(Icons.person, color: Color(0xff05345a)),
+            label: "Profile",
+          ),
+        ],
+        backgroundColor: Colors.white,
+        height: 60,
+      ),
+    );
+  }
+}
+
+class ChatScreen extends StatelessWidget {
+  const ChatScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
+
+    return Scaffold(
+        body: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(myUid)
+                .collection('connections')
+                .where('status', isEqualTo: 'connected')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text("No Active Chats. Connect With Friends To Start"),
+                );
+              }
+              return ListView.builder(
+                itemCount: snapshot.data!.docs.length,
+                itemBuilder: (context, index) {
+                  var doc = snapshot.data!.docs[index];
+                  var data = doc.data() as Map<String, dynamic>;
+                  String friendUid = doc.id;
+                  String friendName = data['name'] ?? "User";
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.teal.shade700,
+                      child: Text(friendName[0].toUpperCase(),
+                          style: const TextStyle(color: Colors.white)),
+                    ),
+                    title: Text(
+                      friendName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text("Tap to start Chatting"),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => IndividualChatPage(
+                                  receiverUid: friendUid,
+                                  receiverName: friendName,
+                                )),
+                      );
+                    },
+                  );
+                },
+              );
+            }));
+  }
+}
+
+class IndividualChatPage extends StatefulWidget {
+  final String receiverUid;
+  final String receiverName;
+
+  const IndividualChatPage(
+      {super.key, required this.receiverUid, required this.receiverName});
+
+  @override
+  State<IndividualChatPage> createState() => _IndividualChatPageState();
+}
+
+class _IndividualChatPageState extends State<IndividualChatPage> {
+  final TextEditingController _messageController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _myPrivateKey;
+  String? _receiverPublicKey;
+  late String chatRoomId;
+
+  @override
+  void initState() {
+    super.initState();
+    List<String> ids = [_auth.currentUser!.uid, widget.receiverUid];
+    ids.sort();
+    chatRoomId = ids.join('_');
+
+    _loadKeys();
+  }
+
+  List<int>? _aesKeyBytes;
+  Future<void> _loadKeys() async {
+    print("DEBUG: Starting _loadKeys for ${widget.receiverName}");
+
+    try {
+      String? pKey = await EncryptionService().getPrivateKey();
+
+      if (pKey == null) {
+        print("DEBUG: Private Key is NULL in Storage");
+        throw "Local Private Key Missing";
+      } else {
+        print("pKey is: ${pKey.substring(0, 30)}");
+      }
+
+      if (pKey.contains('-----BEGIN')) {
+        print("Yes header exists");
+      } else {
+        print("Header not found");
+      }
+      print("Formatted Key is: ${pKey}");
+
+      final myUid = FirebaseAuth.instance.currentUser!.uid;
+      final results = await Future.wait([
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(myUid)
+            .collection('connections')
+            .doc(widget.receiverUid)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.receiverUid)
+            .get()
+      ]);
+
+      DocumentSnapshot connectionDoc = results[0];
+      DocumentSnapshot receiverUserDoc = results[1];
+
+      if (!connectionDoc.exists) {
+        print("DEBUG: No connection document found for ${widget.receiverUid}");
+        throw "Connection not established";
+      }
+      if (!receiverUserDoc.exists) throw "Receiver user data not found";
+
+      String encryptedAesKey = connectionDoc['aesKey'] ?? "";
+      String remotePubKey = receiverUserDoc['publicKey'] ?? "";
+
+      print("Remote Key is: ${remotePubKey}");
+      print("DEBUG: Found encrypted AES Key. Attempting RSA Decryption...");
+      print("EncryptedAesKey is: ${encryptedAesKey}");
+
+      if (encryptedAesKey.isEmpty) {
+        print("DEBUG: aesKey field is empty in Firestore");
+        throw "AES Key Missing";
+      }
+      String decryptedAesKeyString =
+          EncryptionService.decryptMessage(encryptedAesKey, pKey);
+
+      if (mounted) {
+        setState(() {
+          _myPrivateKey = pKey;
+          _receiverPublicKey = remotePubKey;
+          _aesKeyBytes = base64.decode(decryptedAesKeyString.trim());
+        });
+        print("DEBUG: Successfully loaded and decrypted the AES Key");
+      }
+    } catch (e) {
+      print("KEY ERROR: $e");
+    }
+  }
+
+  void sendMessage() async {
+    if (_messageController.text.trim().isEmpty ||
+        _receiverPublicKey == null ||
+        _aesKeyBytes == null) {
+      print(
+          "Error raised in the sendMessage() function. Cannot send the message, Key loaded: ${_aesKeyBytes != null}");
+
+      if (_aesKeyBytes == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Encryption keys not ready yet")),
+        );
+      }
+      return;
+    }
+
+    String plainText = _messageController.text.trim();
+    _messageController.clear();
+
+    try {
+      String encryptedMsg =
+          await EncryptionService.encryptAES(plainText, _aesKeyBytes!);
+
+      await FirebaseFirestore.instance
+          .collection('chat_rooms')
+          .doc(chatRoomId)
+          .collection('messages')
+          .add({
+        'senderId': _auth.currentUser!.uid,
+        'receiverId': widget.receiverUid,
+        'message': encryptedMsg,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("Encryption/Sending Error: $e");
+    }
+
+    if (_aesKeyBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Encryption keys not ready yet")),
+      );
+    }
+  }
+
+  Widget _buildMessageBubble(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    bool isMe = data['senderId'] == FirebaseAuth.instance.currentUser!.uid;
+
+    return FutureBuilder<String>(
+      future: EncryptionService.decryptAES(data['message'], _aesKeyBytes!),
+      builder: (context, snapshot) {
+        String displayMessage = snapshot.data ?? "...";
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Column(
+            crossAxisAlignment:
+                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Container(
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.75),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isMe ? Colors.teal : Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: Radius.circular(isMe ? 16 : 0),
+                    bottomRight: Radius.circular(isMe ? 0 : 16),
+                  ),
+                ),
+                child: Text(
+                  displayMessage,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : Colors.black87,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                data['timestamp'] != null
+                    ? (data['timestamp'] as Timestamp)
+                        .toDate()
+                        .toString()
+                        .substring(11, 16)
+                    : "",
+                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.receiverName),
+        backgroundColor: Colors.teal,
+        actions: [
+          Icon(_aesKeyBytes != null ? Icons.lock : Icons.lock_open, size: 18),
+          const SizedBox(width: 15),
+        ],
+      ),
+      body: _aesKeyBytes == null
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Colors.teal),
+                  SizedBox(height: 16),
+                  Text("Decrypting Secure Channel..."),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('chat_rooms')
+                        .doc(chatRoomId)
+                        .collection('messages')
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData)
+                        return const Center(child: CircularProgressIndicator());
+
+                      return ListView.builder(
+                        reverse: true,
+                        itemCount: snapshot.data!.docs.length,
+                        itemBuilder: (context, index) =>
+                            _buildMessageBubble(snapshot.data!.docs[index]),
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            hintText: "Message Encrypted ...",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        backgroundColor: Colors.teal,
+                        child: IconButton(
+                          icon: const Icon(Icons.send, color: Colors.white),
+                          onPressed: sendMessage,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class ConversationScreen extends StatefulWidget {
+  const ConversationScreen({super.key});
+
+  @override
+  State<ConversationScreen> createState() => _ConversationScreenState();
+}
+
+class _ConversationScreenState extends State<ConversationScreen> {
+  final TextEditingController _searchcontroller = TextEditingController();
+  Stream<QuerySnapshot>? _searchStream;
+
+  void _searchUser() {
+    String id = _searchcontroller.text.trim();
+    if (id.isEmpty) return;
+
+    setState(() {
+      _searchStream = FirebaseFirestore.instance
+          .collection('users')
+          .where('knotID', isEqualTo: id)
+          .snapshots();
+    });
+  }
+
+  bool _isProcessing = false;
+  Future<void> _acceptRequest(String fromUid, String? fromName) async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    const String statusConnected = 'connected';
+
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
+
+    try {
+      final randomBytes = List<int>.generate(32, (i) => Random().nextInt(256));
+      final aesKeyString = base64.encode(randomBytes);
+
+      DocumentSnapshot senderDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(fromUid)
+          .get();
+      DocumentSnapshot myDoc =
+          await FirebaseFirestore.instance.collection('users').doc(myUid).get();
+
+      if (!senderDoc.exists || senderDoc.data() == null) {
+        throw "Sender document not found in the Firestore.";
+      }
+
+      String senderPublicKey = senderDoc['publicKey'];
+      String myPublicKey = myDoc['publicKey'];
+      String myName = myDoc['name'] ?? "User";
+
+      String encryptedKeyForSender =
+          EncryptionService.encryptMessage(aesKeyString, senderPublicKey);
+      String encryptedKeyForMe =
+          EncryptionService.encryptMessage(aesKeyString, myPublicKey);
+
+      print("DEBUG: Attempting to update MY connection doc...");
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(myUid)
+          .collection('connections')
+          .doc(fromUid)
+          .set({
+        'status': statusConnected,
+        'aesKey': encryptedKeyForMe,
+        'name': fromName,
+        'targetUid': fromUid,
+      }, SetOptions(merge: true));
+      print("DEBUG: My doc updated");
+
+      print("DEBUG: Attempting to update Others connection doc...");
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(fromUid)
+          .collection('connections')
+          .doc(myUid)
+          .set({
+        'status': statusConnected,
+        'aesKey': encryptedKeyForSender,
+        'name': myName,
+        'targetUid': myUid,
+      }, SetOptions(merge: true));
+      print("DEBUG: Others doc updated");
+    } catch (e) {
+      print("CATCH ERROR: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text("Error raised: $e", style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isProcessing = false;
+        _searchStream = null;
+        _searchcontroller.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("You are now connected with ${fromName}!"),
+        ),
+      );
+    }
+  }
+
+  Widget _buildSearchStreamResult() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _searchStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No user found with this knotID"));
+        }
+
+        var userDoc = snapshot.data!.docs.first;
+        var userData = userDoc.data() as Map<String, dynamic>;
+
+        return Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: ListTile(
+            leading: const CircleAvatar(
+                backgroundColor: Colors.teal,
+                child: Icon(Icons.person, color: Colors.white)),
+            title: Text(userData['name'],
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                )),
+            subtitle: Text("ID: ${userData['knotID']}"),
+            trailing: ElevatedButton(
+              onPressed: () async {
+                final currentUser = FirebaseAuth.instance.currentUser;
+                String targetUid = userDoc.id;
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('connections')
+                    .doc(targetUid)
+                    .set({'status': 'request_sent', 'targetUid': targetUid});
+
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(targetUid)
+                    .collection('connections')
+                    .doc(currentUser.uid)
+                    .set({
+                  'status': 'request_received',
+                  'fromName': currentUser.displayName,
+                  'fromUid': currentUser.uid,
+                });
+              },
+              child: const Text("Request"),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.amberAccent.shade200,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPendingRequest() {
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(myUid)
+          .collection('connections')
+          .where('status', isEqualTo: 'request_received')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text("No Pending Requests."),
+          );
+        }
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            var doc = snapshot.data!.docs[index];
+            var data = doc.data() as Map<String, dynamic>;
+            return ListTile(
+              title: Text(data['fromName'] ?? "Unkown"),
+              subtitle: const Text("Sent you a request"),
+              trailing: IconButton(
+                icon: const Icon(Icons.check_circle, color: Colors.green),
+                onPressed: () => _acceptRequest(doc.id, data['fromName']),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchcontroller,
+              decoration: InputDecoration(
+                filled: true,
+                hintText: "Enter 6 Digit KnotID",
+                prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: _searchUser,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(
+                    color: Colors.teal,
+                    width: 2,
+                  ),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 20),
+            if (_searchStream != null) ...[
+              const Text(
+                "Search Result",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              _buildSearchStreamResult(),
+              const Divider(height: 30),
+            ],
+            Expanded(
+              child: _buildPendingRequest(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final String uid = FirebaseAuth.instance.currentUser!.uid;
+    return Scaffold(
+      body: FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+                child: CircularProgressIndicator(color: Colors.teal));
+          }
+          if (snapshot.hasError ||
+              !snapshot.hasData ||
+              !snapshot.data!.exists) {
+            return const Center(child: Text("Error loading Profile"));
+          }
+          var userData = snapshot.data!.data() as Map<String, dynamic>;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 30.0),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                const CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.teal,
+                  child: Icon(Icons.person, size: 50, color: Colors.white),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  userData['name'] ?? "NO NAME",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontFamily: 'serif',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    "Knot ID : ${userData['knotID']}",
+                    style: TextStyle(
+                      color: Colors.brown,
+                      fontFamily: 'serif',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+                const Divider(height: 40, color: Colors.teal),
+                ListTile(
+                    leading: Icon(Icons.logout, color: Colors.red),
+                    title: const Text("LogOut"),
+                    onTap: () async {
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) {
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                            '/login', (route) => false);
+                      }
+                    }),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
