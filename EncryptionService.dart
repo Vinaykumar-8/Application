@@ -61,35 +61,19 @@ class EncryptionService {
     return utf8.decode(base64.decode(raw));
   }
 
-  static String encryptMessage(
-      String plainText, String receiverPublicKeyString) {
-    try {
-      final publicKey = RSAPublicKey.fromString(receiverPublicKeyString);
-      return publicKey.encrypt(plainText);
-    } catch (e) {
-      print("RSA Encrypt Error: $e");
-      return "";
-    }
+  static String encryptAESKeyWithRSA(
+      List<int> aesKeyBytes, String receiverPublicKeyString) {
+   final publicKey = RSAPublicKey.fromString(receiverPublicKeyString);
+    final aesKeyBase64 = base64.encode(aesKeyBytes);
+    return publicKey.encrypt(aesKeyBase64);
   }
 
-  static String decryptMessage(String cipherText, String myPrivateKeyString) {
-    try {
-      final base64Regex = RegExp(r'[a-zA-Z0-9+/=]+');
-      final matches = base64Regex.allMatches(myPrivateKeyString);
-      String cleanBase64 = matches.map((m) => m.group(0)).join('');
+  static List<int> decryptAESKeyWithRSA(
+    String encryptedAesKey,
+    String privateKeyString){
 
-      final String header = "-----BEGIN\x20PRIVATE\x20KEY-----";
-      final String footer = "-----END\x20PRIVATE\x20KEY-----";
+    final privateKey = RSAPrivateKey.fromString(privateKeyString);
+    final aesKeyBase64 = privateKey.decrypt(encryptedAesKey);
 
-      final String formattedKey = "$header\n$cleanBase64\n$footer";
-      print("Formatted Key with headers is: $formattedKey");
-
-      final privateKey = RSAPrivateKey.fromString(formattedKey);
-      return privateKey.decrypt(cipherText);
-    } catch (e) {
-      print("Crypton Decrypt Error: $e");
-      print("Key starts with: ${myPrivateKeyString.substring(0, 20)}");
-      throw Exception("Failed to decrypt RSA: $e");
-    }
-  }
+    return base64.decode(aesKeyBase64);
 }
