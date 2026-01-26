@@ -1,4 +1,3 @@
-import 'dart:html';
 import 'dart:math';
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
@@ -750,11 +749,9 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         print("DEBUG: aesKey field is empty in Firestore");
         throw "AES Key Missing";
       }
-      String fixedPrivateKey = pKey.contains('BEGIN')
-          ? pKey
-          : EncryptionService.wrapPrivateKeyPem(pKey);
-      final aesKeyBytes = EncryptionService.decryptAESKeyWithRSA(
-          encryptedAesKey, fixedPrivateKey);
+
+      final aesKeyBytes =
+          EncryptionService.decryptAESKeyWithRSA(pKey, encryptedAesKey);
 
       if (aesKeyBytes.length != 32) {
         throw "Invalid AES key length: ${aesKeyBytes.length}";
