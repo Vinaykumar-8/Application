@@ -1,9 +1,7 @@
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:crypton/crypton.dart';
-import 'package:pointycastle/asymmetric/api.dart' as pc;
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
+import 'package:crypton/crypton.dart' as crypt;
 import 'package:flutter/foundation.dart';
 
 class EncryptionService {
@@ -11,10 +9,10 @@ class EncryptionService {
   final _storage = const FlutterSecureStorage();
 
   static Map<String, String> _generateKeysInBackground(int _) {
-    final keypair = RSAKeypair.fromRandom();
+    final keypair = crypt.RSAKeypair.fromRandom();
     return {
-      'public': keypair.publicKey.toString(),
-      'private': keypair.privateKey.toString(),
+      'public': keypair.publicKey.toPEM(),
+      'private': keypair.privateKey.toPEM(),
     };
   }
 
@@ -24,6 +22,14 @@ class EncryptionService {
 
   Future<void> savePrivateKey(String privateKey) async {
     await _storage.write(key: 'private_key', value: privateKey);
+  }
+
+  Future<String?> getPrivateKey() async {
+    String? raw = await _storage.read(key: 'private_key');
+    if (raw == null) {
+      return null;
+    }
+    return raw;
   }
 
   static Future<String> encryptAES(
@@ -53,27 +59,19 @@ class EncryptionService {
     return utf8.decode(clearTextBytes);
   }
 
-  Future<String?> getPrivateKey() async {
-    String? raw = await _storage.read(key: 'private_key');
-    if (raw == null) {
-      return null;
-    }
-    return utf8.decode(base64.decode(raw));
-  }
-
   static String encryptAESKeyWithRSA(
-      List<int> aesKeyBytes, String receiverPublicKeyString) {
-   final publicKey = RSAPublicKey.fromString(receiverPublicKeyString);
+      List<int> aesKeyBytes, String receiverPublicKeyPem) {
+    final publicKey = crypt.RSAPublicKey.fromPEM(receiverPublicKeyPem);
     final aesKeyBase64 = base64.encode(aesKeyBytes);
+
     return publicKey.encrypt(aesKeyBase64);
   }
 
   static List<int> decryptAESKeyWithRSA(
-    String encryptedAesKey,
-    String privateKeyString){
+      String privateKeyPem, String encryptedAesKeyBase64) {
+    final privateKey = crypt.RSAPrivateKey.fromPEM(privateKeyPem);
+    final decryptedBase64 = privateKey.decrypt(encryptedAesKeyBase64);
 
-    final privateKey = RSAPrivateKey.fromString(privateKeyString);
-    final aesKeyBase64 = privateKey.decrypt(encryptedAesKey);
-
-    return base64.decode(aesKeyBase64);
+    return base64.decode(decryptedBase64);
+  }
 }
