@@ -750,14 +750,20 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         print("DEBUG: aesKey field is empty in Firestore");
         throw "AES Key Missing";
       }
-      String decryptedAesKeyString =
-          EncryptionService.decryptMessage(encryptedAesKey, pKey);
+      String fixedPrivateKey = pKey.contains('BEGIN')
+          ? pKey
+          : EncryptionService.wrapPrivateKeyPem(pKey);
+      final aesKeyBytes = EncryptionService.decryptAESKeyWithRSA(
+          encryptedAesKey, fixedPrivateKey);
 
+      if (aesKeyBytes.length != 32) {
+        throw "Invalid AES key length: ${aesKeyBytes.length}";
+      }
       if (mounted) {
         setState(() {
           _myPrivateKey = pKey;
           _receiverPublicKey = remotePubKey;
-          _aesKeyBytes = base64.decode(decryptedAesKeyString.trim());
+          _aesKeyBytes = aesKeyBytes;
         });
         print("DEBUG: Successfully loaded and decrypted the AES Key");
       }
@@ -976,8 +982,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
 
     try {
-      final randomBytes = List<int>.generate(32, (i) => Random().nextInt(256));
-      final aesKeyString = base64.encode(randomBytes);
+      final aesKeyBytes =
+          List<int>.generate(32, (i) => Random.secure().nextInt(256));
 
       DocumentSnapshot senderDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -995,9 +1001,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
       String myName = myDoc['name'] ?? "User";
 
       String encryptedKeyForSender =
-          EncryptionService.encryptMessage(aesKeyString, senderPublicKey);
+          EncryptionService.encryptAESKeyWithRSA(aesKeyBytes, senderPublicKey);
       String encryptedKeyForMe =
-          EncryptionService.encryptMessage(aesKeyString, myPublicKey);
+          EncryptionService.encryptAESKeyWithRSA(aesKeyBytes, myPublicKey);
 
       print("DEBUG: Attempting to update MY connection doc...");
       await FirebaseFirestore.instance
