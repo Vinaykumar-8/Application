@@ -9,10 +9,31 @@ class EncryptionService {
   final _storage = const FlutterSecureStorage();
 
   static Map<String, String> _generateKeysInBackground(int _) {
-    final keypair = crypt.RSAKeypair.fromRandom();
-    return {
-      'public': keypair.publicKey.toPEM(),
-      'private': keypair.privateKey.toPEM(),
+    final secureRandom = FortunaRandom();
+    final seed = Uint8List(32);
+    final random = Random.secure();
+
+    for(int i=0; i<seed.length;i++){
+      seed[i] = random.nextInt(256);
+    }
+    secureRandom.seed(KeyParameter(seed));
+    final keyGen = RSAKeyGenerator()
+      ..init(ParamterWithRandom(
+        RSAKeyGeneratorParameters(
+          BigInt.parse('65537'),
+          2048,
+          64,
+          ),
+        secureRandom,
+        ),
+      );
+    final pair = keyGen.generateKeyPair();
+    final publicKey = pair.publicKey as RSAPublicKey;
+    final privateKey = pair.privateKey as RSAPrivateKey;
+
+    return{
+      'public' : _encodePublicKeyToPem(publicKey),
+      'private' : _encodePrivateKeyToPem(privateKey),
     };
   }
 
@@ -25,11 +46,7 @@ class EncryptionService {
   }
 
   Future<String?> getPrivateKey() async {
-    String? raw = await _storage.read(key: 'private_key');
-    if (raw == null) {
-      return null;
-    }
-    return raw;
+    return await _storage.read(key :'private_key');
   }
 
   static Future<String> encryptAES(
@@ -61,17 +78,58 @@ class EncryptionService {
 
   static String encryptAESKeyWithRSA(
       List<int> aesKeyBytes, String receiverPublicKeyPem) {
-    final publicKey = crypt.RSAPublicKey.fromPEM(receiverPublicKeyPem);
-    final aesKeyBase64 = base64.encode(aesKeyBytes);
+    final publicKey = _parsePublicKeyFromPem(receiverPublicKeyPem);
+    final cipher = OAEPEncoding(
+      RSAEngine(),
+      SHA256Digest(),
+      SHA256Digest(),
+      null,
+      )..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
 
-    return publicKey.encrypt(aesKeyBase64);
+    final encrypted = cipher.process(Uint8List.fromList(aesKeyBytes));
+    return base64.encode(encrypted);
   }
 
   static List<int> decryptAESKeyWithRSA(
       String privateKeyPem, String encryptedAesKeyBase64) {
-    final privateKey = crypt.RSAPrivateKey.fromPEM(privateKeyPem);
-    final decryptedBase64 = privateKey.decrypt(encryptedAesKeyBase64);
+    final privateKey = _parsePrivateKeyFromPem(privateKeyPem);
+    final cipher = OAEPEncoding(
+      RSAEngine(),
+      SHA256Digest(),
+      SHA256Digest(),
+      null,
+      )..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
+    
+    final decrypted = cipher.process(base64.decode(encryptedAesKeyBase64);
+    return decrypted;
+  }
+  static String _encodePublicKeyToPem(RSAPublicKey key){
+      final bytes = ASN1Sequence()
+        ..add(ASN1Integer(key.modulus!))
+        ..add(ASN1Integer(key.exponent!));
+      return _wrapPem('PUBLIC KEY', bytes.encodedBytes);
+  }
+  static String _encodePrivateKeyToPem(RSAPrivateKey key){
+    final seq = ASN1Sequence()
+      ..add(ASN1Integer(BigInt.zero))
+      ..add(ASN1Integet(key.n!))
+      ..add(ASN1Integer(key.exponent!))
+      ..add(ASN1Integer(key.privateExponent!))
+      ..add(ASN1Integer(key.p!))
+      ..add(ASN1Integer(key.q!))
+      ..add(ASN1Integer(key.privateExponent! % (key.p! - BigInt.one)))
+      ..add(ASN1Integer(key.privateExponent! % (key.q! - BigInt.one)))
+      ..add(ASN1Integer(key.q!.modInverse(key.p!)));
 
-    return base64.decode(decryptedBase64);
+    return _wrapPem('PRIVATE KEY', seq.encodedBytes);
+  }
+  static RSAPublicKey _parsePublicKeyFromPem(String pem){
+    final bytes = _decodePem(pem);
+    final seq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
+
+    return RSAPublicKey(
+      (seq.elements![0] as ASN1Integer).valueAsBigInteger,
+      (seq.elements![1] as ASN1Integer).valueAsBigInteger,
+      );
   }
 }
