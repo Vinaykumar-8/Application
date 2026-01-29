@@ -132,4 +132,27 @@ class EncryptionService {
       (seq.elements![1] as ASN1Integer).valueAsBigInteger,
       );
   }
+  static RSAPrivateKey _prsePrivateKeyFromPem(String pem){
+    final bytes = _decodePem(pem);
+    final seq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
+
+    return RSAPrivateKey(
+      (seq.elements![1] as ASN1Integer).valueAsBigInteger,
+      (seq.elements![2] as ASN1Integer).valueAsBigInteger,
+      (seq.elements![3] as ASN1Integer).valueAsBigInteger,
+      (seq.elements![4] as ASN1Integer).valueAsBigInteger,
+      (seq.elements![5] as ASN1Integer).valueAsBigInteger,
+      );
+  }
+  static String _wrapPem(String type, Uint8List data){
+    final b64 = base64.encode(data);
+    return '-----BEGIN $type-----\n$b64\n-----END $type-----';
+  }                                    
+  static Uint8List _decodePem(String pem){
+    final cleaned = pem
+      .replaceAll(RegExp(r'-----.*-----'), '')
+      .replaceAll('\n','');
+
+    return base64.decode(cleaned);
+  }
 }
