@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math';
-import 'typed_data';
+import 'dart:typed_data';
 import 'package:pointycastle/export.dart';
 
 class EncryptionService {
@@ -20,7 +20,7 @@ class EncryptionService {
     }
     secureRandom.seed(KeyParameter(seed));
     final keyGen = RSAKeyGenerator()
-      ..init(ParamtersWithRandom(
+      ..init(ParametersWithRandom(
         RSAKeyGeneratorParameters(
           BigInt.parse('65537'),
           2048,
@@ -102,7 +102,7 @@ class EncryptionService {
       null,
       )..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
     
-    final decrypted = cipher.process(base64.decode(encrypted aes key based));
+    final decrypted = cipher.process(base64.decode(encryptedAesKeyBase64));
     return decrypted;
   }
   static String _encodePublicKeyToPem(RSAPublicKey key){
