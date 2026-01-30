@@ -1,8 +1,10 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
-import 'package:crypton/crypton.dart' as crypt;
 import 'package:flutter/foundation.dart';
+import 'dart:math';
+import 'typed_data';
+import 'package:pointycastle/export.dart';
 
 class EncryptionService {
   static final _aesAlgorithm = AesGcm.with256bits();
@@ -18,7 +20,7 @@ class EncryptionService {
     }
     secureRandom.seed(KeyParameter(seed));
     final keyGen = RSAKeyGenerator()
-      ..init(ParamterWithRandom(
+      ..init(ParamtersWithRandom(
         RSAKeyGeneratorParameters(
           BigInt.parse('65537'),
           2048,
@@ -100,7 +102,7 @@ class EncryptionService {
       null,
       )..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
     
-    final decrypted = cipher.process(base64.decode(encryptedAesKeyBase64);
+    final decrypted = cipher.process(base64.decode(encrypted aes key based));
     return decrypted;
   }
   static String _encodePublicKeyToPem(RSAPublicKey key){
@@ -112,7 +114,7 @@ class EncryptionService {
   static String _encodePrivateKeyToPem(RSAPrivateKey key){
     final seq = ASN1Sequence()
       ..add(ASN1Integer(BigInt.zero))
-      ..add(ASN1Integet(key.n!))
+      ..add(ASN1Integer(key.n!))
       ..add(ASN1Integer(key.exponent!))
       ..add(ASN1Integer(key.privateExponent!))
       ..add(ASN1Integer(key.p!))
@@ -132,7 +134,7 @@ class EncryptionService {
       (seq.elements![1] as ASN1Integer).valueAsBigInteger,
       );
   }
-  static RSAPrivateKey _prsePrivateKeyFromPem(String pem){
+  static RSAPrivateKey _parsePrivateKeyFromPem(String pem){
     final bytes = _decodePem(pem);
     final seq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
 
