@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:pointycastle/export.dart';
+import 'package:pointycastle/asn1.dart';
 
 class EncryptionService {
   static final _aesAlgorithm = AesGcm.with256bits();
@@ -83,9 +84,7 @@ class EncryptionService {
     final publicKey = _parsePublicKeyFromPem(receiverPublicKeyPem);
     final cipher = OAEPEncoding(
       RSAEngine(),
-      SHA256Digest(),
-      SHA256Digest(),
-      null,
+      digest: SHA256Digest(),
       )..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
 
     final encrypted = cipher.process(Uint8List.fromList(aesKeyBytes));
@@ -97,9 +96,7 @@ class EncryptionService {
     final privateKey = _parsePrivateKeyFromPem(privateKeyPem);
     final cipher = OAEPEncoding(
       RSAEngine(),
-      SHA256Digest(),
-      SHA256Digest(),
-      null,
+      digest: SHA256Digest(),
       )..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
     
     final decrypted = cipher.process(base64.decode(encryptedAesKeyBase64));
