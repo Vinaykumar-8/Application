@@ -83,8 +83,7 @@ class EncryptionService {
       List<int> aesKeyBytes, String receiverPublicKeyPem) {
     final publicKey = _parsePublicKeyFromPem(receiverPublicKeyPem);
     final cipher = OAEPEncoding(
-      RSAEngine(),
-      digest: SHA256Digest(),
+      RSAEngine()
       )..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
 
     final encrypted = cipher.process(Uint8List.fromList(aesKeyBytes));
@@ -95,8 +94,7 @@ class EncryptionService {
       String privateKeyPem, String encryptedAesKeyBase64) {
     final privateKey = _parsePrivateKeyFromPem(privateKeyPem);
     final cipher = OAEPEncoding(
-      RSAEngine(),
-      digest: SHA256Digest(),
+      RSAEngine()
       )..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
     
     final decrypted = cipher.process(base64.decode(encryptedAesKeyBase64));
@@ -127,8 +125,8 @@ class EncryptionService {
     final seq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
 
     return RSAPublicKey(
-      (seq.elements![0] as ASN1Integer).valueAsBigInteger,
-      (seq.elements![1] as ASN1Integer).valueAsBigInteger,
+      (seq.elements![0] as ASN1Integer).integer!,
+      (seq.elements![1] as ASN1Integer).integer!,
       );
   }
   static RSAPrivateKey _parsePrivateKeyFromPem(String pem){
@@ -136,11 +134,11 @@ class EncryptionService {
     final seq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
 
     return RSAPrivateKey(
-      (seq.elements![1] as ASN1Integer).valueAsBigInteger,
-      (seq.elements![2] as ASN1Integer).valueAsBigInteger,
-      (seq.elements![3] as ASN1Integer).valueAsBigInteger,
-      (seq.elements![4] as ASN1Integer).valueAsBigInteger,
-      (seq.elements![5] as ASN1Integer).valueAsBigInteger,
+      (seq.elements![1] as ASN1Integer).integer!,
+      (seq.elements![2] as ASN1Integer).integer!,
+      (seq.elements![3] as ASN1Integer).integer!,
+      (seq.elements![4] as ASN1Integer).integer!,
+      (seq.elements![5] as ASN1Integer).integer!,
       );
   }
   static String _wrapPem(String type, Uint8List data){
