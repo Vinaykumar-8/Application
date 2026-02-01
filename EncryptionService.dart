@@ -63,7 +63,20 @@ class EncryptionService {
     );
     return base64.encode(secretBox.concatenation());
   }
+  
+  static Future<void> initializeKeyIfNeeded() async {
+    final existingKey = await getPrivateKey();
 
+    if(existingKey != null){
+      debugPrint('DEBUG : Private Key already exists');
+      return;
+    }
+    debugPrint('DEBUG: No Private Key exists');
+    final keyPair= await EncryptionService.generateRSAkeysAsync();
+    await savePrivateKey(keyPair['private']!);
+    debugPrint('DEBUG: RSA Keys generated and Private Keys');
+  }
+  
   static Future<String> decryptAES(
       String encryptedData, List<int> secretKeyBytes) async {
     final secretKey = await _aesAlgorithm.newSecretKeyFromBytes(secretKeyBytes);
