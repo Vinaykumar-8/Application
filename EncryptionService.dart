@@ -64,19 +64,6 @@ class EncryptionService {
     return base64.encode(secretBox.concatenation());
   }
   
-  static Future<void> initializeKeyIfNeeded() async {
-    final existingKey = await getPrivateKey();
-
-    if(existingKey != null){
-      debugPrint('DEBUG : Private Key already exists');
-      return;
-    }
-    debugPrint('DEBUG: No Private Key exists');
-    final keyPair= await EncryptionService.generateRSAkeysAsync();
-    await savePrivateKey(keyPair['private']!);
-    debugPrint('DEBUG: RSA Keys generated and Private Keys');
-  }
-  
   static Future<String> decryptAES(
       String encryptedData, List<int> secretKeyBytes) async {
     final secretKey = await _aesAlgorithm.newSecretKeyFromBytes(secretKeyBytes);
@@ -117,7 +104,7 @@ class EncryptionService {
       final bytes = ASN1Sequence()
         ..add(ASN1Integer(key.modulus!))
         ..add(ASN1Integer(key.exponent!));
-      return _wrapPem('PUBLIC KEY', bytes.encodedBytes);
+      return _wrapPem('PUBLIC KEY', bytes.encodedBytes!);
   }
   static String _encodePrivateKeyToPem(RSAPrivateKey key){
     final seq = ASN1Sequence()
@@ -131,7 +118,7 @@ class EncryptionService {
       ..add(ASN1Integer(key.privateExponent! % (key.q! - BigInt.one)))
       ..add(ASN1Integer(key.q!.modInverse(key.p!)));
 
-    return _wrapPem('PRIVATE KEY', seq.encodedBytes);
+    return _wrapPem('PRIVATE KEY', seq.encodedBytes!);
   }
   static RSAPublicKey _parsePublicKeyFromPem(String pem){
     final bytes = _decodePem(pem);
