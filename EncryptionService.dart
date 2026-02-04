@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:pointycastle/export.dart';
-import 'package:pointycastle/asn1.dart';
+//import 'package:pointycastle/asn1.dart';
 
 class EncryptionService {
   static final _aesAlgorithm = AesGcm.with256bits();
