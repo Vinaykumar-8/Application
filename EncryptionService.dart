@@ -6,7 +6,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:pointycastle/export.dart';
 import 'package:pointycastle/asn1.dart';
-
+import 'package:pointycastle/symmetric/api.dart';
 class EncryptionService {
   static final _aesAlgorithm = AesGcm.with256bits();
   final _storage = const FlutterSecureStorage();
