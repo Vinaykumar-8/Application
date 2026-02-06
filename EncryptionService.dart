@@ -144,23 +144,29 @@ class EncryptionService {
   }
   static RSAPublicKey _parsePublicKeyFromPem(String pem){
     final bytes = _decodePem(pem);
-    final seq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
+    final topLevelSeq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
 
+    final publicKeyBitString = topLevelSeq.elements![1] as ASN1BitString;
+    final publicKeyBytes = Uint8List.fromList(publicKeyBitString.stringValues!);
+    
+    final publicKeySeq = ASN1Parser(publicKeyBytes).nextObject() as ASN1Sequence;
     return RSAPublicKey(
-      (seq.elements![0] as ASN1Integer).integer!,
-      (seq.elements![1] as ASN1Integer).integer!,
+      (publicKeySeq.elements![0] as ASN1Integer).integer!,
+      (publicKeySeq.elements![1] as ASN1Integer).integer!,
       );
   }
   static RSAPrivateKey _parsePrivateKeyFromPem(String pem){
     final bytes = _decodePem(pem);
-    final seq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
+    final topLevel = ASN1Parser(bytes).nextObject() as ASN1Sequence;
 
+    final privateKeyOctet = topLevel.elements![2] as ASN1OctetString;
+    final privateKeySeq = ASN1Parser(privateKeyOctet.valueBytes!,).nextObject() as ASN1Sequence;
+    
     return RSAPrivateKey(
-      (seq.elements![1] as ASN1Integer).integer!,
-      (seq.elements![2] as ASN1Integer).integer!,
-      (seq.elements![3] as ASN1Integer).integer!,
-      (seq.elements![4] as ASN1Integer).integer!,
-      (seq.elements![5] as ASN1Integer).integer!,
+      (privateKeySeq.elements![1] as ASN1Integer).integer!,
+      (privateKeySeq.elements![3] as ASN1Integer).integer!,
+      (privateKeySeq.elements![4] as ASN1Integer).integer!,
+      (privateKeySeq.elements![5] as ASN1Integer).integer!,
       );
   }
   static String _wrapPem(String type, Uint8List data){
