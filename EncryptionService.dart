@@ -35,8 +35,8 @@ class EncryptionService {
     final privateKey = pair.privateKey as RSAPrivateKey;
 
     return{
-      'public' : _encodePublicKeyToPem(publicKey),
-      'private' : _encodePrivateKeyToPem(privateKey),
+      'public' : _encodePublicKeyPKCS8(publicKey),
+      'private' : _encodePrivateKeyPKCS8(privateKey),
     };
   }
 
@@ -98,11 +98,17 @@ class EncryptionService {
     final decrypted = cipher.process(base64.decode(encryptedAesKeyBase64));
     return decrypted;
   }
-  static String _encodePublicKeyToPem(RSAPublicKey key){
-      final bytes = ASN1Sequence()
+  static String _encodePublicKeyPKCS8(RSAPublicKey key){
+      final algorithmSeq = ASN1Sequence()
+        ..add(ASN1ObjectIdentifier.fromName('rsaEncryption'))
+        ..add(ASN1Null());
+
+      final publicKeySeq = ASN1Sequence()
         ..add(ASN1Integer(key.modulus!))
         ..add(ASN1Integer(key.exponent!));
-      return _wrapPem('PUBLIC KEY', bytes.encodedBytes!);
+
+      final publicKeyBitString = ASN1BitString()
+        ..stringValues = publicKeySeq.encodedBytes!;
   }
   static String _encodePrivateKeyToPem(RSAPrivateKey key){
     final seq = ASN1Sequence()
