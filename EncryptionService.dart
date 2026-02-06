@@ -82,9 +82,8 @@ class EncryptionService {
   static String encryptAESKeyWithRSA(
       List<int> aesKeyBytes, String receiverPublicKeyPem) {
     final publicKey = _parsePublicKeyFromPem(receiverPublicKeyPem);
-    final cipher = OAEPEncoding(
-      RSAEngine()
-      )..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
+    final cipher = OAEPEncoding.withSHA256(RSAEngine())
+      ..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
 
     final encrypted = cipher.process(Uint8List.fromList(aesKeyBytes));
     return base64.encode(encrypted);
@@ -93,9 +92,8 @@ class EncryptionService {
   static List<int> decryptAESKeyWithRSA(
       String privateKeyPem, String encryptedAesKeyBase64) {
     final privateKey = _parsePrivateKeyFromPem(privateKeyPem);
-    final cipher = OAEPEncoding(
-      RSAEngine()
-      )..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
+    final cipher = OAEPEncoding.withSHA256(RSAEngine())
+    ..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
     
     final decrypted = cipher.process(base64.decode(encryptedAesKeyBase64));
     return decrypted;
