@@ -109,6 +109,12 @@ class EncryptionService {
 
       final publicKeyBitString = ASN1BitString()
         ..stringValues = publicKeySeq.encodedBytes!;
+
+      final topLevelSeq = ASN1Sequence()
+        ..add(algorithmSeq)
+        ..add(publicKeyBitString);
+
+    return _wrapPem('PUBLIC KEY',topLevelSeq.encodedBytes!);
   }
   static String _encodePrivateKeyToPem(RSAPrivateKey key){
     final seq = ASN1Sequence()
