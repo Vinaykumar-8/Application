@@ -116,11 +116,11 @@ class EncryptionService {
 
     return _wrapPem('PUBLIC KEY',topLevelSeq.encodedBytes!);
   }
-  static String _encodePrivateKeyPKCS8(RSAPrivateKey key){
-    final seq = ASN1Sequence()
+  static String _encodePrivateKeyToPemPKCS8(RSAPrivateKey key){
+    final rsaSeq = ASN1Sequence()
       ..add(ASN1Integer(BigInt.zero))
       ..add(ASN1Integer(key.n!))
-      ..add(ASN1Integer(BigInt.from(65537)))
+      ..add(ASN1Integer(key.exponent!))
       ..add(ASN1Integer(key.privateExponent!))
       ..add(ASN1Integer(key.p!))
       ..add(ASN1Integer(key.q!))
@@ -128,20 +128,17 @@ class EncryptionService {
       ..add(ASN1Integer(key.privateExponent! % (key.q! - BigInt.one)))
       ..add(ASN1Integer(key.q!.modInverse(key.p!)));
 
-    final algorithmSeq = ASN1Sequence()
-      ..add(ASN1ObjectIndetifier.fromName('rsaEncryption'))
-      ..add(ASN1Null());
-
-    final privateKeyOctet = ASN1OctetString()
-      ..valueBytes = privateKeySeq.encodedBytes!;
-
-    final topLevelSeq = ASN1Sequence()
-      ..add(ASN1Integer(BigInt.zero))
-      ..add(algorithmSeq)
-      ..add(privateKeyOctet);
-    
-    return _wrapPem('PRIVATE KEY', topLevelSeq.encodedBytes!);
+    final privateKeyOctetString = ASN1OctetString(octets: rsaSeq.encodedBytes);
+    final pkcs8 = ASN1Sequence()
+      ..add(ASN1Integer(BitInt.zero))
+      ..add(ASN1Sequence()
+            ..add(ASN1ObjectIndentifier.fromName('rsaEncryption'))
+            ..add(ASN1Null()))
+      ..add(privateKeyOctetString);
+            
+    return _wrapPem('PRIVATE KEY', pkcs8.encodedBytes!);
   }
+  
   static RSAPublicKey _parsePublicKeyFromPem(String pem){
     final bytes = _decodePem(pem);
     final topLevelSeq = ASN1Parser(bytes).nextObject() as ASN1Sequence;
