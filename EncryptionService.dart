@@ -22,17 +22,20 @@ class EncryptionService {
     return base64Encode(publicKey.bytes);
   }
 
-  static Future<Map<String, String>> generateRSAkeysAsync() async {
-    return await compute(_generateKeysInBackground, 0);
+  static Future<SimpleKeyPairData> loadIdentityPrivateKey() async{
+    final encoded = await _storage.read(
+      key:_privateKeyStorageKey,
+    );
+    if(encoded==null){
+      throw StateError('X25519 private key not found');
+    }
+    final privateKeyBytes = base64Decode(encoded);
+    final keyPair = await _x25519.newKeyPairFromSeed(privateKeyBytes);
+
+    return await keyPair.extract();
   }
 
-  Future<void> savePrivateKey(String privateKey) async {
-    await _storage.write(key: 'private_key', value: privateKey);
-  }
-
-  Future<String?> getPrivateKey() async {
-    return await _storage.read(key :'private_key');
-  }
+  
 
   static Future<String> encryptAES(
       String plainText, List<int> secretKeyBytes) async {
