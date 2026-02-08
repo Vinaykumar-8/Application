@@ -27,27 +27,28 @@ void main() async {
 Future<void> _initCryptoIdentity() async {
   final user = FirebaseAuth.instance.currentUser;
 
-  if(user==null){
-    throw StateError("User must be encrypted before the crypto init");
+  if (user == null) {
+    throw StateError("User must be authenticated before crypto init");
   }
   final uid = user.uid;
-  try{
+
+  try {
     await EncryptionService.loadIdentityPrivateKey();
     debugPrint('X25519 identity already exists');
     return;
-  }
-  catch(_){
+  } catch (_) {
     debugPrint('Generating new X25519 identity');
   }
-  final publicKeyBase64 = await EncryptionService.instance
-    .collection('users')
-    .doc(uid)
-    .set({
-      'x25519PublicKey':publicKeyBase64,
-      'keyType':'X25519',
-      'createdAt':FieldValue.serverTimestamp(),
+  final publicKeyBase64 =
+      await EncryptionService.generateAndStoreIdentityKeyPair();
+
+  await FirebaseFirestore.instance.collection('users').doc(uid).set(
+    {
+      'x25519PublicKey': publicKeyBase64,
+      'keyType': 'X25519',
+      'createdAt': FieldValue.serverTimestamp(),
     },
-    SetOptions(merge:true)
+    SetOptions(merge: true),
   );
 }
 
@@ -84,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _checkState() async {
     final formState = _keyform.currentState;
-    if(formState == null || !formState.validate()) return;
+    if (formState == null || !formState.validate()) return;
 
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 50));
@@ -105,7 +106,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'name': _controller_two.text.trim(),
         'email': _controller_one.text.trim(),
         'knotID': knotID,
-        'publicKey': publicKeyString,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -687,7 +687,8 @@ class IndividualChatPage extends StatefulWidget {
 class _IndividualChatPageState extends State<IndividualChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  String? _myPrivateKey;
+  SecretKey? _aesKey;
+
   String? _receiverPublicKey;
   late String chatRoomId;
 
@@ -703,76 +704,29 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
   List<int>? _aesKeyBytes;
   Future<void> _loadKeys() async {
-    print("DEBUG: Starting _loadKeys for ${widget.receiverName}");
 
     try {
-      String? pKey = await EncryptionService().getPrivateKey();
+      final receiverDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(widget.receiverUid)
+      .get();
 
-      if (pKey == null) {
-        print("DEBUG: Private Key is NULL in Storage");
-        throw "Local Private Key Missing";
-      } else {
-        print("pKey is: ${pKey.substring(0, 30)}");
+      if(!receiverDoc.exists){
+        throw 'Receiver not found';
       }
+      final receiverPublicKey = receiverDoc['x5519PublicKey'];
+      final sharedSecret = await EncryptionService.deriveSharedSecret(receiverPublicKey);
 
-      if (pKey.contains('-----BEGIN')) {
-        print("Yes header exists");
-      } else {
-        print("Header not found");
-      }
-      print("Formatted Key is: ${pKey}");
-
-      final myUid = FirebaseAuth.instance.currentUser!.uid;
-      final results = await Future.wait([
-        FirebaseFirestore.instance
-            .collection('users')
-            .doc(myUid)
-            .collection('connections')
-            .doc(widget.receiverUid)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.receiverUid)
-            .get()
-      ]);
-
-      DocumentSnapshot connectionDoc = results[0];
-      DocumentSnapshot receiverUserDoc = results[1];
-
-      if (!connectionDoc.exists) {
-        print("DEBUG: No connection document found for ${widget.receiverUid}");
-        throw "Connection not established";
-      }
-      if (!receiverUserDoc.exists) throw "Receiver user data not found";
-
-      String encryptedAesKey = connectionDoc['aesKey'] ?? "";
-      String remotePubKey = receiverUserDoc['publicKey'] ?? "";
-
-      print("Remote Key is: ${remotePubKey}");
-      print("DEBUG: Found encrypted AES Key. Attempting RSA Decryption...");
-      print("EncryptedAesKey is: ${encryptedAesKey}");
-
-      if (encryptedAesKey.isEmpty) {
-        print("DEBUG: aesKey field is empty in Firestore");
-        throw "AES Key Missing";
-      }
-
-      final aesKeyBytes =
-          EncryptionService.decryptAESKeyWithRSA(pKey, encryptedAesKey);
-
-      if (aesKeyBytes.length != 32) {
-        throw "Invalid AES key length: ${aesKeyBytes.length}";
-      }
-      if (mounted) {
-        setState(() {
-          _myPrivateKey = pKey;
-          _receiverPublicKey = remotePubKey;
-          _aesKeyBytes = aesKeyBytes;
+      final aesKey = await EncryptionService.deriveAesKey(sharedSecret);
+      final aesBytes = await aesKey.extractBytes();
+      if(mounted){
+        setState((){
+          _aesKey = aesKey;
+          _aesKeyBytes = aesBytes;
         });
-        print("DEBUG: Successfully loaded and decrypted the AES Key");
       }
     } catch (e) {
-      print("KEY ERROR: $e");
+      print("KEY DERIVATION ERROR: $e");
     }
   }
 
@@ -794,9 +748,13 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     String plainText = _messageController.text.trim();
     _messageController.clear();
 
+    setState((){
+      _receiverPublicKey = receiverPublicKey;
+    });
+
     try {
       String encryptedMsg =
-          await EncryptionService.encryptAES(plainText, _aesKeyBytes!);
+          await EncryptionService.encryptMessage(plainText, _aesKey!);
 
       await FirebaseFirestore.instance
           .collection('chat_rooms')
@@ -824,7 +782,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     bool isMe = data['senderId'] == FirebaseAuth.instance.currentUser!.uid;
 
     return FutureBuilder<String>(
-      future: EncryptionService.decryptAES(data['message'], _aesKeyBytes!),
+      future: EncryptionService.decryptMessage(data['message'], _aesKey!),
       builder: (context, snapshot) {
         String displayMessage = snapshot.data ?? "...";
 
@@ -982,63 +940,46 @@ class _ConversationScreenState extends State<ConversationScreen> {
     });
 
     const String statusConnected = 'connected';
-
     final myUid = FirebaseAuth.instance.currentUser!.uid;
-
     try {
-      final aesKeyBytes =
-          List<int>.generate(32, (i) => Random.secure().nextInt(256));
+      final senderDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(fromUid)
+      .get();
 
-      DocumentSnapshot senderDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(fromUid)
-          .get();
-      DocumentSnapshot myDoc =
-          await FirebaseFirestore.instance.collection('users').doc(myUid).get();
-
-      if (!senderDoc.exists || senderDoc.data() == null) {
-        throw "Sender document not found in the Firestore.";
+      if(!senderDoc.exists || senderDoc.data()==null){
+        throw "Sender document not found";
       }
+      final senderPublicKey = senderDoc['x25519PublicKey'] as String;
 
-      String senderPublicKey = senderDoc['publicKey'];
-      String myPublicKey = myDoc['publicKey'];
-      String myName = myDoc['name'] ?? "User";
-
-      String encryptedKeyForSender =
-          EncryptionService.encryptAESKeyWithRSA(aesKeyBytes, senderPublicKey);
-      String encryptedKeyForMe =
-          EncryptionService.encryptAESKeyWithRSA(aesKeyBytes, myPublicKey);
-
-      print("DEBUG: Attempting to update MY connection doc...");
+      await EncryptionService.deriveSharedSecret(senderPublicKey);
+      
       await FirebaseFirestore.instance
-          .collection('users')
-          .doc(myUid)
-          .collection('connections')
-          .doc(fromUid)
-          .set({
-        'status': statusConnected,
-        'aesKey': encryptedKeyForMe,
-        'name': fromName,
-        'targetUid': fromUid,
-      }, SetOptions(merge: true));
-      print("DEBUG: My doc updated");
-
-      print("DEBUG: Attempting to update Others connection doc...");
+      .collection('users')
+      .doc(myUid)
+      .collection('connections')
+      .doc(fromUid)
+      .set({
+        'status':statusConnected,
+        'name':fromName,
+        'targetUid':fromUid,
+        'keyType':'X25519',
+      },
+      SetOptions(merge:true));
 
       await FirebaseFirestore.instance
-          .collection('users')
-          .doc(fromUid)
-          .collection('connections')
-          .doc(myUid)
-          .set({
-        'status': statusConnected,
-        'aesKey': encryptedKeyForSender,
-        'name': myName,
-        'targetUid': myUid,
-      }, SetOptions(merge: true));
-      print("DEBUG: Others doc updated");
+      .collection('users')
+      .doc(fromUid)
+      .collection('connections')
+      .doc(myUid)
+      .set({
+        'status':statusConnected,
+        'targetUid':myUid,
+        'keyType':'X25519',
+      },
+      SetOptions(merge:true));
+
     } catch (e) {
-      print("CATCH ERROR: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content:
@@ -1054,7 +995,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("You are now connected with ${fromName}!"),
+          content: Text("You are now connected with $fromName!"),
         ),
       );
     }
