@@ -35,7 +35,14 @@ class EncryptionService {
     return await keyPair.extract();
   }
 
-  
+  static Future<SecretKey> derivceSharedSecret(String peerPublicKeyBase64) async {
+    final myKeyPair = await loadIdentityPrivateKey();
+
+    final peerPublicKeyBytes = base64Decode(peerPublicKeyBase64);
+    final peerPublicKey = SimplePublicKey(peerPublicKeyBytes, type:KeyPairType.x25519);
+
+    return _x25519.sharedSecretKey(keyPair:myKeyPair, peerPublicKey:peerPublicKey);
+  }
 
   static Future<String> encryptAES(
       String plainText, List<int> secretKeyBytes) async {
