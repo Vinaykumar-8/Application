@@ -1,43 +1,25 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:math';
-import 'dart:typed_data';
-import 'package:pointycastle/export.dart';
-import 'package:pointycastle/asn1.dart';
-import 'package:pointycastle/symmetric/api.dart';
+import 'dart:convert';
+
 class EncryptionService {
-  static final _aesAlgorithm = AesGcm.with256bits();
-  final _storage = const FlutterSecureStorage();
+  static final X25519 _x25519 = X25519();
+  static final AesGcm _aesGcm = AesGcm.with256bits();
 
-  static Map<String, String> _generateKeysInBackground(int _) {
-    final secureRandom = FortunaRandom();
-    final seed = Uint8List(32);
-    final random = Random.secure();
+  static const String _privateKeyStorageKey = 'x25519_private_key';
+  static const FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-    for(int i=0; i<seed.length;i++){
-      seed[i] = random.nextInt(256);
-    }
-    secureRandom.seed(KeyParameter(seed));
-    final keyGen = RSAKeyGenerator()
-      ..init(ParametersWithRandom(
-        RSAKeyGeneratorParameters(
-          BigInt.parse('65537'),
-          2048,
-          64,
-          ),
-        secureRandom,
-        ),
+  static Future<String> generateAndStoreIdentityKeyPair() async {
+    final keyPair = await _x25519.newKeyPair();
+    final privateKeyBytes = await keyPair.extractPrivateKeyBytes();
+
+    final publicKey = await keyPair.extractPublicKey();
+
+    await _storage.write(
+      key:_privateKeyStorageKey,
+      value:base64Encode(privateKeyBytes),
       );
-    final pair = keyGen.generateKeyPair();
-    final publicKey = pair.publicKey as RSAPublicKey;
-    final privateKey = pair.privateKey as RSAPrivateKey;
-
-    return{
-      'public' : _encodePublicKeyPKCS8(publicKey),
-      'private' : _encodePrivateKeyPKCS8(privateKey),
-    };
+    return base64Encode(publicKey.bytes);
   }
 
   static Future<Map<String, String>> generateRSAkeysAsync() async {
