@@ -20,7 +20,35 @@ void main() async {
       storageBucket: "knot-messenger-fe813.firebasestorage.app",
     ),
   );
+  await _initCryptoIdentity();
   runApp(const KnotApp());
+}
+
+Future<void> _initCryptoIdentity() async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if(user==null){
+    throw StateError("User must be encrypted before the crypto init");
+  }
+  final uid = user.uid;
+  try{
+    await EncryptionService.loadIdentityPrivateKey();
+    debugPrint('X25519 identity already exists');
+    return;
+  }
+  catch(_){
+    debugPrint('Generating new X25519 identity');
+  }
+  final publicKeyBase64 = await EncryptionService.instance
+    .collection('users')
+    .doc(uid)
+    .set({
+      'x25519PublicKey':publicKeyBase64,
+      'keyType':'X25519',
+      'createdAt':FieldValue.serverTimestamp(),
+    },
+    SetOptions(merge:true)
+  );
 }
 
 class KnotApp extends StatelessWidget {
