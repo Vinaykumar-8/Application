@@ -83,20 +83,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
 
   Future<void> _checkState() async {
-    if (!_keyform.currentState!.validate()) return;
+    final formState = _keyform.currentState;
+    if(formState == null || !formState.validate()) return;
 
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 50));
 
     try {
-      final keys = await EncryptionService.generateRSAkeysAsync();
-      final publicKeyString = keys['public']!;
-      final privateKeyString = keys['private']!;
-
-      print("CHECK: Keys has been produced");
-      print("CHECK: PublicKey is: ${publicKeyString.substring(0, 30)}");
-      print("CHECK: PrivateKey is: ${privateKeyString.substring(0, 30)}");
-
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _controller_one.text.trim(),
@@ -104,21 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       String knotID = (10000 + Random().nextInt(90000)).toString();
       await userCredential.user?.updateDisplayName(_controller_two.text.trim());
-      await EncryptionService().savePrivateKey(privateKeyString);
 
-      print("PrivateKey has been stored");
-      print("VERIFICATION___:");
-
-      String? retreivedKey = await EncryptionService().getPrivateKey();
-
-      print("---DEBUG: Step 3 matching the keys");
-      if (retreivedKey == null) {
-        print("Critical Error: The privateKey is null");
-      } else {
-        print("Retreived Key : ${retreivedKey.substring(0, 30)}");
-        bool isMatch = privateKeyString.trim() == retreivedKey.trim();
-        print("Keys Match: ${isMatch ? 'Keys Matched' : 'Keys do not match'}");
-      }
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
