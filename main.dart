@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'encryption_service.dart';
 import 'package:flutter/material.dart';
+import 'package:cryptography/cryptography.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -721,6 +722,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       final aesBytes = await aesKey.extractBytes();
       if(mounted){
         setState((){
+          _receiverPublicKey = receiverPublicKey;
           _aesKey = aesKey;
           _aesKeyBytes = aesBytes;
         });
@@ -988,6 +990,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
       );
     }
       if (success && mounted){
+        setState((){
+          _isProcessing = false;
+        })
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("You are now connected to $fromName")),
         );
