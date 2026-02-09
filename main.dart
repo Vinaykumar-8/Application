@@ -951,8 +951,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
         throw "Sender document not found";
       }
       final senderPublicKey = senderDoc['x25519PublicKey'] as String;
-
-      await EncryptionService.deriveSharedSecret(senderPublicKey);
+      bool success = false;
+      final sharedSecret = await EncryptionService.deriveSharedSecret(senderPublicKey);
       
       await FirebaseFirestore.instance
       .collection('users')
@@ -978,7 +978,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         'keyType':'X25519',
       },
       SetOptions(merge:true));
-
+      success=true;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -986,19 +986,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 Text("Error raised: $e", style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.red),
       );
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isProcessing = false;
-        _searchStream = null;
-        _searchcontroller.clear();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("You are now connected with $fromName!"),
-        ),
-      );
     }
+      if (success && mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("You are now connected to $fromName")),
+        );
+      }
   }
 
   Widget _buildSearchStreamResult() {
