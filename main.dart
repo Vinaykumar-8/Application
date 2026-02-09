@@ -714,7 +714,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       if(!receiverDoc.exists){
         throw 'Receiver not found';
       }
-      final receiverPublicKey = receiverDoc['x5519PublicKey'];
+      final receiverPublicKey = receiverDoc['x25519PublicKey'];
       final sharedSecret = await EncryptionService.deriveSharedSecret(receiverPublicKey);
 
       final aesKey = await EncryptionService.deriveAesKey(sharedSecret);
