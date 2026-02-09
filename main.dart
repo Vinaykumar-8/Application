@@ -21,7 +21,6 @@ void main() async {
       storageBucket: "knot-messenger-fe813.firebasestorage.app",
     ),
   );
-  await _initCryptoIdentity();
   runApp(const KnotApp());
 }
 
@@ -109,6 +108,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'knotID': knotID,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      await _initCryptoIdentity();
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -348,6 +349,8 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      await _initCryptoIdentity();
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -705,23 +708,23 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
   List<int>? _aesKeyBytes;
   Future<void> _loadKeys() async {
-
     try {
       final receiverDoc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(widget.receiverUid)
-      .get();
+          .collection('users')
+          .doc(widget.receiverUid)
+          .get();
 
-      if(!receiverDoc.exists){
+      if (!receiverDoc.exists) {
         throw 'Receiver not found';
       }
       final receiverPublicKey = receiverDoc['x25519PublicKey'];
-      final sharedSecret = await EncryptionService.deriveSharedSecret(receiverPublicKey);
+      final sharedSecret =
+          await EncryptionService.deriveSharedSecret(receiverPublicKey);
 
       final aesKey = await EncryptionService.deriveAesKey(sharedSecret);
       final aesBytes = await aesKey.extractBytes();
-      if(mounted){
-        setState((){
+      if (mounted) {
+        setState(() {
           _receiverPublicKey = receiverPublicKey;
           _aesKey = aesKey;
           _aesKeyBytes = aesBytes;
@@ -749,10 +752,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
     String plainText = _messageController.text.trim();
     _messageController.clear();
-
-    setState((){
-      _receiverPublicKey = receiverPublicKey;
-    });
 
     try {
       String encryptedMsg =
@@ -934,53 +933,52 @@ class _ConversationScreenState extends State<ConversationScreen> {
           .snapshots();
     });
   }
-
   bool _isProcessing = false;
+
   Future<void> _acceptRequest(String fromUid, String? fromName) async {
     setState(() {
       _isProcessing = true;
     });
-
+    
+    bool success = false;
     const String statusConnected = 'connected';
     final myUid = FirebaseAuth.instance.currentUser!.uid;
     try {
       final senderDoc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(fromUid)
-      .get();
+          .collection('users')
+          .doc(fromUid)
+          .get();
 
-      if(!senderDoc.exists || senderDoc.data()==null){
+      if (!senderDoc.exists || senderDoc.data() == null) {
         throw "Sender document not found";
       }
       final senderPublicKey = senderDoc['x25519PublicKey'] as String;
-      bool success = false;
-      final sharedSecret = await EncryptionService.deriveSharedSecret(senderPublicKey);
-      
-      await FirebaseFirestore.instance
-      .collection('users')
-      .doc(myUid)
-      .collection('connections')
-      .doc(fromUid)
-      .set({
-        'status':statusConnected,
-        'name':fromName,
-        'targetUid':fromUid,
-        'keyType':'X25519',
-      },
-      SetOptions(merge:true));
 
       await FirebaseFirestore.instance
-      .collection('users')
-      .doc(fromUid)
-      .collection('connections')
-      .doc(myUid)
-      .set({
-        'status':statusConnected,
-        'targetUid':myUid,
-        'keyType':'X25519',
-      },
-      SetOptions(merge:true));
-      success=true;
+          .collection('users')
+          .doc(myUid)
+          .collection('connections')
+          .doc(fromUid)
+          .set({
+        'status': statusConnected,
+        'name': fromName,
+        'targetUid': fromUid,
+        'keyType': 'X25519',
+        'peerPublicKey':senderPublicKey,
+      }, SetOptions(merge: true));
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(fromUid)
+          .collection('connections')
+          .doc(myUid)
+          .set({
+        'status': statusConnected,
+        'targetUid': myUid,
+        'keyType': 'X25519',
+      }, SetOptions(merge: true));
+      
+      success =true;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -989,12 +987,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
             backgroundColor: Colors.red),
       );
     }
-      if (success && mounted){
+      if (mounted && success){
         setState((){
           _isProcessing = false;
-        })
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("You are now connected to $fromName")),
+          SnackBar(content:Text("You are now connected with $fromName")),
         );
       }
   }
