@@ -1210,7 +1210,7 @@ class ProfileScreen extends StatelessWidget {
                       if (context.mounted) {
                         Navigator.pushAndRemoveUntil(context,
                         MaterialPageRoute(builder: (_) => const LoginPage()),
-                        (_) => false;
+                        (_) => false,
                         );
                       }
                     }),
