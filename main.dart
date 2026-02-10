@@ -1208,8 +1208,9 @@ class ProfileScreen extends StatelessWidget {
                     onTap: () async {
                       await FirebaseAuth.instance.signOut();
                       if (context.mounted) {
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                            '/login', (route) => false);
+                        Navigator.pushAndRemoveUntil(context,
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                        (_) => false;
                       }
                     }),
               ],
