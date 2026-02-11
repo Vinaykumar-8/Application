@@ -1213,7 +1213,7 @@ class ProfileScreen extends StatelessWidget {
                         (_) => false,
                         );
                       }
-                    });
+                    }),
               ],
             ),
           );
