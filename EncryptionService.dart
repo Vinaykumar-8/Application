@@ -6,25 +6,25 @@ class EncryptionService {
   static final X25519 _x25519 = X25519();
   static final AesGcm _aesGcm = AesGcm.with256bits();
 
-  static const String _privateKeyStorageKey = 'x25519_private_key';
+  //static const String _privateKeyStorageKey = 'x25519_private_key';
   static const FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  static Future<String> generateAndStoreIdentityKeyPair() async {
+  static Future<String> generateAndStoreIdentityKeyPair(String uid) async {
     final keyPair = await _x25519.newKeyPair();
     final privateKeyBytes = await keyPair.extractPrivateKeyBytes();
 
     final publicKey = await keyPair.extractPublicKey();
 
     await _storage.write(
-      key:_privateKeyStorageKey,
+      key:'x25519_private_$uid',
       value:base64Encode(privateKeyBytes),
       );
     return base64Encode(publicKey.bytes);
   }
 
-  static Future<SimpleKeyPairData> loadIdentityPrivateKey() async{
+  static Future<SimpleKeyPairData> loadIdentityPrivateKey(String uid) async{
     final encoded = await _storage.read(
-      key:_privateKeyStorageKey,
+      key:'x25519_private_$uid',
     );
     if(encoded==null){
       throw StateError('X25519 private key not found');
