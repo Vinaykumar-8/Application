@@ -31,16 +31,24 @@ Future<void> _initCryptoIdentity() async {
     throw StateError("User must be authenticated before crypto init");
   }
   final uid = user.uid;
+  final userDoc =
+      await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+  final firestoreKey = userDoc.data()?['x25519PublicKey'];
 
   try {
-    await EncryptionService.loadIdentityPrivateKey();
-    debugPrint('X25519 identity already exists');
+    await EncryptionService.loadIdentityPrivateKey(uid);
+
+    if (firestoreKey != null) {
+      debugPrint('Identity already initialized correctly');
+      return;
+    }
     return;
   } catch (_) {
     debugPrint('Generating new X25519 identity');
   }
   final publicKeyBase64 =
-      await EncryptionService.generateAndStoreIdentityKeyPair();
+      await EncryptionService.generateAndStoreIdentityKeyPair(uid);
 
   await FirebaseFirestore.instance.collection('users').doc(uid).set(
     {
@@ -708,6 +716,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
   List<int>? _aesKeyBytes;
   Future<void> _loadKeys() async {
+    final myUid = _auth.currentUser!.uid;
     try {
       final receiverDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -719,7 +728,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       }
       final receiverPublicKey = receiverDoc['x25519PublicKey'];
       final sharedSecret =
-          await EncryptionService.deriveSharedSecret(receiverPublicKey);
+          await EncryptionService.deriveSharedSecret(myUid, receiverPublicKey);
 
       final aesKey = await EncryptionService.deriveAesKey(sharedSecret);
       final aesBytes = await aesKey.extractBytes();
@@ -933,13 +942,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
           .snapshots();
     });
   }
+
   bool _isProcessing = false;
 
   Future<void> _acceptRequest(String fromUid, String? fromName) async {
     setState(() {
       _isProcessing = true;
     });
-    
+
     bool success = false;
     const String statusConnected = 'connected';
     final myUid = FirebaseAuth.instance.currentUser!.uid;
@@ -964,7 +974,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         'name': fromName,
         'targetUid': fromUid,
         'keyType': 'X25519',
-        'peerPublicKey':senderPublicKey,
+        'peerPublicKey': senderPublicKey,
       }, SetOptions(merge: true));
 
       await FirebaseFirestore.instance
@@ -977,8 +987,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
         'targetUid': myUid,
         'keyType': 'X25519',
       }, SetOptions(merge: true));
-      
-      success =true;
+
+      success = true;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -987,14 +997,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
             backgroundColor: Colors.red),
       );
     }
-      if (mounted && success){
-        setState((){
-          _isProcessing = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content:Text("You are now connected with $fromName")),
-        );
-      }
+    if (mounted && success) {
+      setState(() {
+        _isProcessing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("You are now connected with $fromName")),
+      );
+    }
   }
 
   Widget _buildSearchStreamResult() {
@@ -1208,9 +1218,10 @@ class ProfileScreen extends StatelessWidget {
                     onTap: () async {
                       await FirebaseAuth.instance.signOut();
                       if (context.mounted) {
-                        Navigator.pushAndRemoveUntil(context,
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                        (_) => false,
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                          (_) => false,
                         );
                       }
                     }),
