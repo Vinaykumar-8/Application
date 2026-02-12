@@ -35,8 +35,8 @@ class EncryptionService {
     return await keyPair.extract();
   }
 
-  static Future<SecretKey> derivceSharedSecret(String peerPublicKeyBase64) async {
-    final myKeyPair = await loadIdentityPrivateKey();
+  static Future<SecretKey> derivceSharedSecret(String myUid, String peerPublicKeyBase64) async {
+    final myKeyPair = await loadIdentityPrivateKey(myUid);
 
     final peerPublicKeyBytes = base64Decode(peerPublicKeyBase64);
     final peerPublicKey = SimplePublicKey(peerPublicKeyBytes, type:KeyPairType.x25519);
