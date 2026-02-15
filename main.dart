@@ -145,7 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           backgroundColor: Colors.red),
     );
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,173 +159,165 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         centerTitle: true,
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/register_icon.jpeg'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Form(
-            key: _keyform,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  child: Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 4),
-                          const Text("Register",
-                              style: TextStyle(
-                                color: Color(0xffcda325),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 30,
-                                fontFamily: 'serif',
-                              )),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                              controller: _controller_one,
-                              decoration: InputDecoration(
-                                filled: true,
-                                prefixIcon: Icon(Icons.email_outlined,
-                                    color: Colors.teal),
-                                labelText: "Enter Your Email",
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                    color: Colors.teal,
-                                    width: 1.7,
-                                  ),
-                                ),
-                                errorStyle: const TextStyle(
-                                  color: Colors.redAccent,
-                                  fontFamily: 'serif',
-                                  fontSize: 12,
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                    color: Colors.redAccent,
-                                    width: 1.9,
-                                  ),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty)
-                                  return "Kindly Fill All The Details.";
-                                if (!value.contains('@'))
-                                  return "Kindly Enter A Valid Value.";
-                                return null;
-                              }),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                              controller: _controller_two,
-                              decoration: InputDecoration(
-                                  filled: true,
-                                  prefixIcon: Icon(Icons.person_outlined,
-                                      color: Colors.teal),
-                                  labelText: "Enter Your Name",
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                      color: Colors.teal,
-                                      width: 1.7,
-                                    ),
-                                  ),
-                                  errorStyle: const TextStyle(
-                                    color: Colors.redAccent,
-                                    fontFamily: 'serif',
-                                    fontSize: 12,
-                                  ),
-                                  errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(
-                                        color: Colors.redAccent,
-                                        width: 1.9,
-                                      ))),
-                              validator: (value) {
-                                if (value == null || value.isEmpty)
-                                  return "Kindly Fill All The Details.";
-                                return null;
-                              }),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                              controller: _controller_three,
-                              obscureText: true,
-                              decoration: InputDecoration(
-                                  filled: true,
-                                  prefixIcon:
-                                      Icon(Icons.key, color: Color(0xffea6636)),
-                                  labelText: "Set Your Password",
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                      color: Colors.teal,
-                                      width: 1.7,
-                                    ),
-                                  ),
-                                  errorStyle: const TextStyle(
-                                    color: Colors.redAccent,
-                                    fontSize: 12,
-                                    fontFamily: 'serif',
-                                  ),
-                                  errorBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                        color: Colors.redAccent, width: 1.9),
-                                  )),
-                              validator: (value) {
-                                if (value == null || value.isEmpty)
-                                  return "Kindly Fill All The Details.";
-                                if (value.length < 6 || value.length > 12)
-                                  return "Kindly keep the length less than 12 and more than 6 characters.";
-                                return null;
-                              }),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            child: ElevatedButton(
-                                onPressed: _isLoading ? null : _checkState,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text("Register",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16))),
-                            height: 40,
-                            width: 140,
-                          ),
-                        ],
+      body: SafeArea(
+  child: Container(
+    width: double.infinity,
+    height: double.infinity,
+    decoration: const BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage('assets/register_icon.jpeg'),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 400,
+            ),
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _keyform,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 10),
+                      const Text(
+                        "Register",
+                        style: TextStyle(
+                          color: Color(0xffcda325),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          fontFamily: 'serif',
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _controller_one,
+                        decoration: InputDecoration(
+                          filled: true,
+                          prefixIcon: const Icon(
+                            Icons.email_outlined,
+                            color: Colors.teal,
+                          ),
+                          labelText: "Enter Your Email",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Kindly Fill All The Details.";
+                          }
+                          if (!value.contains('@')) {
+                            return "Kindly Enter A Valid Value.";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 15),
+                      TextFormField(
+                        controller: _controller_two,
+                        decoration: InputDecoration(
+                          filled: true,
+                          prefixIcon: const Icon(
+                            Icons.person_outlined,
+                            color: Colors.teal,
+                          ),
+                          labelText: "Enter Your Name",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Kindly Fill All The Details.";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      /// PASSWORD
+                      TextFormField(
+                        controller: _controller_three,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          filled: true,
+                          prefixIcon: const Icon(
+                            Icons.key,
+                            color: Color(0xffea6636),
+                          ),
+                          labelText: "Set Your Password",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Kindly Fill All The Details.";
+                          }
+                          if (value.length < 6 || value.length > 12) {
+                            return "Password must be 6–12 characters.";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      /// REGISTER BUTTON
+                      SizedBox(
+                        width: double.infinity,
+                        height: 45,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _checkState,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "Register",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                   ),
-                  height: 320,
-                  width: 340,
                 ),
-              ],
+              ),
             ),
           ),
         ),
       ),
+    ),
+  ),
+),
+
     );
   }
 }
