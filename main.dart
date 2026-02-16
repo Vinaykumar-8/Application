@@ -244,10 +244,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
-
                       const SizedBox(height: 15),
-
-                      /// PASSWORD
                       TextFormField(
                         controller: _controller_three,
                         obscureText: true,
@@ -274,8 +271,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
 
                       const SizedBox(height: 20),
-
-                      /// REGISTER BUTTON
                       SizedBox(
                         width: double.infinity,
                         height: 45,
@@ -392,7 +387,9 @@ class _LoginPageState extends State<LoginPage> {
             )),
         centerTitle: true,
       ),
-      body: SafeArea(
+      body: Stack(
+        children:[
+          SafeArea(
   child: Container(
     width: double.infinity,
     height: double.infinity,
@@ -404,7 +401,7 @@ class _LoginPageState extends State<LoginPage> {
     ),
     child: SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical:40),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(
@@ -502,6 +499,7 @@ class _LoginPageState extends State<LoginPage> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
+                                    color:Colors.white,
                                   ),
                                 ),
                         ),
@@ -534,6 +532,8 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     ),
+  ],
+  ),
   ),
 ),
 
