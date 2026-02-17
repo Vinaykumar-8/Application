@@ -159,19 +159,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         centerTitle: true,
       ),
-      body: SafeArea(
+      body: Stack(
+        children:[
+          Positioned.fill(
+            child: Image.asset(
+              'assets/register_icon.jpg',
+              fit:BoxFit.cover,
+              ),
+            ),
+          SafeArea(
   child: Container(
-    width: double.infinity,
+    /*width: double.infinity,
     height: double.infinity,
     decoration: const BoxDecoration(
       image: DecorationImage(
         image: AssetImage('assets/register_icon.jpeg'),
         fit: BoxFit.cover,
       ),
-    ),
+    ),*/
     child: SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20,vertical:40),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(
@@ -874,32 +882,38 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                     },
                   ),
                 ),
-                Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          decoration: InputDecoration(
-                            filled: true,
-                            hintText: "Message Encrypted ...",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(25),
-                              borderSide: BorderSide.none,
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _messageController,
+                            maxLines: null,
+                            decoration: InputDecoration(
+                              filled: true,
+                              hintText: "Message Encrypted ...",
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                                borderSide: BorderSide.none,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      CircleAvatar(
-                        backgroundColor: Colors.teal,
-                        child: IconButton(
-                          icon: const Icon(Icons.send, color: Colors.white),
-                          onPressed: sendMessage,
+                        const SizedBox(width: 8),
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.teal,
+                          child: IconButton(
+                            icon: const Icon(Icons.send, color: Colors.white),
+                            onPressed: sendMessage,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
