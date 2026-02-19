@@ -1135,6 +1135,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         padding: EdgeInsets.all(20.0),
         child: Column(
           children: [
+            const SizedBox(height:30),
             TextField(
               controller: _searchcontroller,
               decoration: InputDecoration(
@@ -1201,7 +1202,7 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 30.0),
             child: Column(
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 40),
                 const CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.teal,
