@@ -7,6 +7,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'encryption_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cryptography/cryptography.dart';
+import 'cng_container_builder.dart';
+import 'file_classifier.dart';
+import 'cng_models.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -859,6 +862,28 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
+  Future<void> pickAndProcessFile() async {
+    final result = await FilePicker.platform.pickFiles(withData: true,);
+
+    if(result==null) return;
+    final file = resutl.files.first;
+
+    final sizeInMB = file.size/(1024*1024);
+    if(sizeInMB>10){
+      print("File exceeds 10 mb limit");
+      return;
+    }
+    final classification = FileClassifier.classify(file.name);
+    final container = CngContainerBuilder.buildContainer(
+      originalFileName: file.name,
+      fileBytes: file.bytes!,
+      classification: classification,
+    );
+
+    await saveCngFile("${file.name}_cng.txt",container);
+    print("CNG File Created successfully!");
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
