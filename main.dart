@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:cryptography/cryptography.dart';
 import 'file_classifier.dart';
 import 'cng_container_builder.dart';
+import 'cng_models.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -841,6 +842,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         "fileName": fileName,
         "riskLevel": classification.riskLevel.name,
         "category": classification.category.name,
+        "neutralized": classification.category == FileCategory.programming,
         "timestamp": FieldValue.serverTimestamp(),
       });
     }
@@ -908,7 +910,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     bool isMe = data['senderId'] == _auth.currentUser!.uid;
     Color riskColor;
 
-    switch (data['risklevel']) {
+    switch (data['riskLevel']) {
       case "high":
         riskColor = Colors.red;
         break;
@@ -939,7 +941,8 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
             ),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               Text("📎${data['fileName']}"),
               const SizedBox(height: 4),
@@ -980,7 +983,13 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     final payload =
         decryptedContainer.substring(payloadStart + 27, payloadEnd).trim();
 
-    final bytes = base64Decode(payload);
+    final bytes;
+    if (data['category'] == "programming") {
+      bytes = utf8.encode(payload);
+    } else {
+      bytes = base64Decode(payload);
+    }
+
     final directory = await getApplicationDocumentsDirectory();
     final file = File("${directory.path}/$fileName");
 
