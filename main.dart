@@ -7,11 +7,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'encryption_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cryptography/cryptography.dart';
-import 'cng_container_builder.dart';
 import 'file_classifier.dart';
-import 'cng_models.dart';
+import 'cng_container_builder.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,22 +83,22 @@ class KnotApp extends StatelessWidget {
 }
 
 class AuthWrapper extends StatelessWidget {
-const AuthWrapper({super.key});
+  const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        if(snapshot.connectionState == ConnectionState.waiting){
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        if(snapshot.hasData) {
-          return const ChatScreen();
-      }
-      return const LoginPage();
+        if (snapshot.hasData) {
+          return const ContentPage();
+        }
+        return const LoginPage();
       },
     );
   }
@@ -172,7 +172,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           backgroundColor: Colors.red),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,16 +187,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         centerTitle: true,
       ),
       body: Stack(
-        children:[
+        children: [
           Positioned.fill(
             child: Image.asset(
               'assets/register_icon.jpg',
-              fit:BoxFit.cover,
-              ),
+              fit: BoxFit.cover,
             ),
+          ),
           SafeArea(
-  child: Container(
-    /*width: double.infinity,
+            child: Container(
+              /*width: double.infinity,
     height: double.infinity,
     decoration: const BoxDecoration(
       image: DecorationImage(
@@ -204,151 +204,152 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fit: BoxFit.cover,
       ),
     ),*/
-    child: SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20,vertical:40),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 400,
-            ),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _keyform,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: 10),
-                      const Text(
-                        "Register",
-                        style: TextStyle(
-                          color: Color(0xffcda325),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 28,
-                          fontFamily: 'serif',
-                        ),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: 400,
                       ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _controller_one,
-                        decoration: InputDecoration(
-                          filled: true,
-                          prefixIcon: const Icon(
-                            Icons.email_outlined,
-                            color: Colors.teal,
-                          ),
-                          labelText: "Enter Your Email",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Kindly Fill All The Details.";
-                          }
-                          if (!value.contains('@')) {
-                            return "Kindly Enter A Valid Value.";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 15),
-                      TextFormField(
-                        controller: _controller_two,
-                        decoration: InputDecoration(
-                          filled: true,
-                          prefixIcon: const Icon(
-                            Icons.person_outlined,
-                            color: Colors.teal,
-                          ),
-                          labelText: "Enter Your Name",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Kindly Fill All The Details.";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 15),
-                      TextFormField(
-                        controller: _controller_three,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          filled: true,
-                          prefixIcon: const Icon(
-                            Icons.key,
-                            color: Color(0xffea6636),
-                          ),
-                          labelText: "Set Your Password",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Kindly Fill All The Details.";
-                          }
-                          if (value.length < 6 || value.length > 12) {
-                            return "Password must be 6–12 characters.";
-                          }
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 45,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _checkState,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Form(
+                            key: _keyform,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 10),
+                                const Text(
                                   "Register",
                                   style: TextStyle(
+                                    color: Color(0xffcda325),
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color:Colors.white,
+                                    fontSize: 28,
+                                    fontFamily: 'serif',
                                   ),
                                 ),
+                                const SizedBox(height: 20),
+                                TextFormField(
+                                  controller: _controller_one,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    prefixIcon: const Icon(
+                                      Icons.email_outlined,
+                                      color: Colors.teal,
+                                    ),
+                                    labelText: "Enter Your Email",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Kindly Fill All The Details.";
+                                    }
+                                    if (!value.contains('@')) {
+                                      return "Kindly Enter A Valid Value.";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 15),
+                                TextFormField(
+                                  controller: _controller_two,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    prefixIcon: const Icon(
+                                      Icons.person_outlined,
+                                      color: Colors.teal,
+                                    ),
+                                    labelText: "Enter Your Name",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Kindly Fill All The Details.";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 15),
+                                TextFormField(
+                                  controller: _controller_three,
+                                  obscureText: true,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    prefixIcon: const Icon(
+                                      Icons.key,
+                                      color: Color(0xffea6636),
+                                    ),
+                                    labelText: "Set Your Password",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Kindly Fill All The Details.";
+                                    }
+                                    if (value.length < 6 || value.length > 12) {
+                                      return "Password must be 6–12 characters.";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 45,
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading ? null : _checkState,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: _isLoading
+                                        ? const SizedBox(
+                                            height: 22,
+                                            width: 22,
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Text(
+                                            "Register",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
-    ),
-  ),
-),
-
     );
   }
 }
@@ -412,6 +413,7 @@ class _LoginPageState extends State<LoginPage> {
             )),
         backgroundColor: Colors.red));
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -424,155 +426,154 @@ class _LoginPageState extends State<LoginPage> {
         centerTitle: true,
       ),
       body: Stack(
-        children:[
+        children: [
           SafeArea(
-  child: Container(
-    width: double.infinity,
-    height: double.infinity,
-    decoration: const BoxDecoration(
-      image: DecorationImage(
-        image: AssetImage('assets/icon.jpeg'),
-        fit: BoxFit.cover,
-      ),
-    ),
-    child: SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical:40),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 400,
-            ),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/icon.jpeg'),
+                  fit: BoxFit.cover,
+                ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _keyform,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: 10),
-                      const Text(
-                        "Login",
-                        style: TextStyle(
-                          color: Color(0xffcda325),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 28,
-                          fontFamily: 'serif',
-                        ),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: 400,
                       ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          prefixIcon: const Icon(
-                            Icons.person_outline,
-                            color: Colors.teal,
-                          ),
-                          labelText: "Enter Your Email",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Kindly Fill All The Fields.";
-                          }
-                          if (!value.contains('@')) {
-                            return "Kindly Enter A Valid Email.";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 15),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          filled: true,
-                          prefixIcon: const Icon(
-                            Icons.key,
-                            color: Color(0xffea6636),
-                          ),
-                          labelText: "Enter Your Password",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Kindly Fill All The Fields.";
-                          }
-                          if (value.length < 6 || value.length > 12) {
-                            return "Kindly Enter Valid Password";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 45,
-                        child: ElevatedButton(
-                          onPressed: _updateRoute,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isloading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.orange,
-                                )
-                              : const Text(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Form(
+                            key: _keyform,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 10),
+                                const Text(
                                   "Login",
                                   style: TextStyle(
+                                    color: Color(0xffcda325),
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color:Colors.white,
+                                    fontSize: 28,
+                                    fontFamily: 'serif',
                                   ),
                                 ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegisterScreen(),
+                                const SizedBox(height: 20),
+                                TextFormField(
+                                  controller: _emailController,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    prefixIcon: const Icon(
+                                      Icons.person_outline,
+                                      color: Colors.teal,
+                                    ),
+                                    labelText: "Enter Your Email",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Kindly Fill All The Fields.";
+                                    }
+                                    if (!value.contains('@')) {
+                                      return "Kindly Enter A Valid Email.";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 15),
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: true,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    prefixIcon: const Icon(
+                                      Icons.key,
+                                      color: Color(0xffea6636),
+                                    ),
+                                    labelText: "Enter Your Password",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Kindly Fill All The Fields.";
+                                    }
+                                    if (value.length < 6 || value.length > 12) {
+                                      return "Kindly Enter Valid Password";
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 45,
+                                  child: ElevatedButton(
+                                    onPressed: _updateRoute,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.teal,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: _isloading
+                                        ? const CircularProgressIndicator(
+                                            color: Colors.orange,
+                                          )
+                                        : const Text(
+                                            "Login",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => RegisterScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    "Don't Have An Account?",
+                                    style: TextStyle(
+                                      color: Color(0xff093e69),
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                        child: const Text(
-                          "Don't Have An Account?",
-                          style: TextStyle(
-                            color: Color(0xff093e69),
-                            fontFamily: 'monospace',
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
-    ),
-  ],
-  ),
-  ),
-),
-
     );
   }
 }
@@ -810,8 +811,42 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     }
   }
 
+  Future<void> pickFile() async {
+    final result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      final file = result.files.first;
+      final fileName = file.name;
+      final bytes = file.bytes ?? await File(file.path!).readAsBytes();
+
+      final classification = FileClassifier.classify(fileName);
+      final container = CngContainerBuilder.buildContainer(originalFileName: fileName,
+      fileBytes: bytes,
+      classification: classification,);
+
+      final encryptedContainer = await EncryptionService.encryptMessage(container, _aesKey!);
+
+      await FirebaseFirestore.instance
+      .collection('chat_rooms')
+      .doc(chatRoomId)
+      .collection('messages')
+      .add({
+        "senderId": FirebaseAuth.instance.currentUser!.uid,
+        "receiverId": widget.receiverUid,
+        "type": "attachment",
+        "payload": encryptedContainer,
+        "fileName": fileName,
+        "timestamp": FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
   Widget _buildMessageBubble(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+    if(data['type'] == 'attachment'){
+      return _buildAttachmentBubble(data);
+    }
     bool isMe = data['senderId'] == FirebaseAuth.instance.currentUser!.uid;
 
     return FutureBuilder<String>(
@@ -864,28 +899,45 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
-  Future<void> pickAndProcessFile() async {
-    final result = await FilePicker.platform.pickFiles(withData: true,);
+  Widget _buildAttachmentBubble(Map<String,dynamic> data){
+    Color riskColor;
 
-    if(result==null) return;
-    final file = resutl.files.first;
+    switch(data['risklevel']){
+      case "high":
+      riskColor = Colors.red;
+      break;
 
-    final sizeInMB = file.size/(1024*1024);
-    if(sizeInMB>10){
-      print("File exceeds 10 mb limit");
-      return;
+      case "medium":
+      riskColor = Colors.orange;
+      break;
+
+      default:
+      riskColor = Colors.green;
     }
-    final classification = FileClassifier.classify(file.name);
-    final container = CngContainerBuilder.buildContainer(
-      originalFileName: file.name,
-      fileBytes: file.bytes!,
-      classification: classification,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children:[
+          Text("${data['fileName']}"),
+          const SizedBox(height:4),
+          Text("Risk:${data['riskLevel']}",
+          style: TextStyle(color:riskColor, fontWeight: FontWeight.bold),),
+          const SizedBox(height:4),
+          Text(data['neutralized'] ? "Neutralized" : "Not Neutralized"),
+          const SizedBox(height:6),
+          ElevatedButton(
+            onPressed: () {},
+            child: const Text("Download"),
+          ),
+        ],
+      ),
     );
-
-    await saveCngFile("${file.name}_cng.txt",container);
-    print("CNG File Created successfully!");
   }
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -937,8 +989,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                     child: Row(
                       children: [
                         IconButton(
-                          icon: Icon(Icons.attach_file),
-                        onPressed: pickFile),),
+                            icon: Icon(Icons.attach_file), onPressed: pickFile),
                         Expanded(
                           child: TextField(
                             controller: _messageController,
@@ -947,7 +998,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                               filled: true,
                               hintText: "Message Encrypted ...",
                               contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
+                                  horizontal: 16, vertical: 12),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(25),
                                 borderSide: BorderSide.none,
@@ -1165,7 +1216,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         padding: EdgeInsets.all(20.0),
         child: Column(
           children: [
-            const SizedBox(height:30),
+            const SizedBox(height: 30),
             TextField(
               controller: _searchcontroller,
               decoration: InputDecoration(
