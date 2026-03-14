@@ -936,6 +936,9 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                     padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
                     child: Row(
                       children: [
+                        IconButton(
+                          icon: Icon(Icons.attach_file),
+                        onPressed: pickFile),),
                         Expanded(
                           child: TextField(
                             controller: _messageController,
