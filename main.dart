@@ -11,7 +11,7 @@ import 'file_classifier.dart';
 import 'cng_container_builder.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-
+import 'package:path_provider/path_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -820,22 +820,27 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       final bytes = file.bytes ?? await File(file.path!).readAsBytes();
 
       final classification = FileClassifier.classify(fileName);
-      final container = CngContainerBuilder.buildContainer(originalFileName: fileName,
-      fileBytes: bytes,
-      classification: classification,);
+      final container = CngContainerBuilder.buildContainer(
+        originalFileName: fileName,
+        fileBytes: bytes,
+        classification: classification,
+      );
 
-      final encryptedContainer = await EncryptionService.encryptMessage(container, _aesKey!);
+      final encryptedContainer =
+          await EncryptionService.encryptMessage(container, _aesKey!);
 
       await FirebaseFirestore.instance
-      .collection('chat_rooms')
-      .doc(chatRoomId)
-      .collection('messages')
-      .add({
+          .collection('chat_rooms')
+          .doc(chatRoomId)
+          .collection('messages')
+          .add({
         "senderId": FirebaseAuth.instance.currentUser!.uid,
         "receiverId": widget.receiverUid,
         "type": "attachment",
         "payload": encryptedContainer,
         "fileName": fileName,
+        "riskLevel": classification.riskLevel.name,
+        "category": classification.category.name,
         "timestamp": FieldValue.serverTimestamp(),
       });
     }
@@ -844,7 +849,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   Widget _buildMessageBubble(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-    if(data['type'] == 'attachment'){
+    if (data['type'] == 'attachment') {
       return _buildAttachmentBubble(data);
     }
     bool isMe = data['senderId'] == FirebaseAuth.instance.currentUser!.uid;
@@ -899,45 +904,95 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
-  Widget _buildAttachmentBubble(Map<String,dynamic> data){
+  Widget _buildAttachmentBubble(Map<String, dynamic> data) {
+    bool isMe = data['senderId'] == _auth.currentUser!.uid;
     Color riskColor;
 
-    switch(data['risklevel']){
+    switch (data['risklevel']) {
       case "high":
-      riskColor = Colors.red;
-      break;
+        riskColor = Colors.red;
+        break;
 
       case "medium":
-      riskColor = Colors.orange;
-      break;
+        riskColor = Colors.orange;
+        break;
 
       default:
-      riskColor = Colors.green;
+        riskColor = Colors.green;
     }
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children:[
-          Text("${data['fileName']}"),
-          const SizedBox(height:4),
-          Text("Risk:${data['riskLevel']}",
-          style: TextStyle(color:riskColor, fontWeight: FontWeight.bold),),
-          const SizedBox(height:4),
-          Text(data['neutralized'] ? "Neutralized" : "Not Neutralized"),
-          const SizedBox(height:6),
-          ElevatedButton(
-            onPressed: () {},
-            child: const Text("Download"),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
           ),
-        ],
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isMe ? Colors.teal : Colors.grey[200],
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: Radius.circular(isMe ? 16 : 0),
+              bottomRight: Radius.circular(isMe ? 0 : 16),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("📎${data['fileName']}"),
+              const SizedBox(height: 4),
+              Text(
+                "Risk:${data['riskLevel']}",
+                style: TextStyle(color: riskColor, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(data['neutralized'] ? "Neutralized" : "Not Neutralized"),
+              const SizedBox(height: 6),
+              ElevatedButton(
+                onPressed: () => downloadAttachment(data),
+                child: const Text("Download"),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+
+  Future<void> downloadAttachment(Map<String, dynamic> data) async {
+    final encryptedContainer = data['payload'];
+    final fileName = data['fileName'];
+
+    final decryptedContainer =
+        await EncryptionService.decryptMessage(encryptedContainer, _aesKey!);
+
+    final payloadStart =
+        decryptedContainer.indexOf("-----CNG-PAYLOAD-START-----");
+    final payloadEnd = decryptedContainer.indexOf("-----CNG-PAYLOAD-END-----");
+
+    if (payloadStart == -1 || payloadEnd == -1) {
+      print("Invalid Container");
+      return;
+    }
+
+    final payload =
+        decryptedContainer.substring(payloadStart + 27, payloadEnd).trim();
+
+    final bytes = base64Decode(payload);
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File("${directory.path}/$fileName");
+
+    await file.writeAsBytes(bytes);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          "File Downloaded Successfully",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.blue));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
