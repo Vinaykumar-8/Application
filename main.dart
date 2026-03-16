@@ -908,19 +908,24 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
   Widget _buildAttachmentBubble(Map<String, dynamic> data) {
     bool isMe = data['senderId'] == _auth.currentUser!.uid;
-    Color riskColor;
+    Color bgColor;
+    Color borderColor;
+    Color riskColor = Colors.teal;
 
     switch (data['riskLevel']) {
       case "high":
-        riskColor = Colors.red;
+        bgColor = Colors.red.shade50;
+        borderColor = Colors.red.shade700;
         break;
 
       case "medium":
-        riskColor = Colors.orange;
+        bgColor = Colors.orange.shade50;
+        borderColor = Colors.orange.shade700;
         break;
 
       default:
-        riskColor = Colors.green;
+        bgColor = Colors.green.shade50;
+        borderColor = Colors.green.shade700;
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
