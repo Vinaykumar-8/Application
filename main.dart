@@ -933,9 +933,9 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75,
+            maxWidth: MediaQuery.of(context).size.width * 0.60,
           ),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: isMe ? Colors.teal : Colors.grey[200],
             borderRadius: BorderRadius.only(
@@ -976,11 +976,16 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     final decryptedContainer =
         await EncryptionService.decryptMessage(encryptedContainer, _aesKey!);
 
+    print("Download button pressed");
+    
     final payload =
         decryptedContainer.split("-----CNG-PAYLOAD-START-----")[1]
       .split("-----CNG-PAYLOAD-END-----")[0]
       .trim();
 
+    print("Downloading File : $fileName");
+    print("Categroy: ${data['category']}");
+    
     final bytes;
     if (data['category'] == "programming") {
       bytes = utf8.encode(payload);
