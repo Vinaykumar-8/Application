@@ -937,7 +937,8 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           ),
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isMe ? Colors.teal : Colors.grey[200],
+            color: bgColor,
+            border: Border.all(color: borderColor, width:2),
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16),
               topRight: const Radius.circular(16),
@@ -1016,7 +1017,9 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           const SizedBox(width: 15),
         ],
       ),
-      body: _aesKeyBytes == null
+      body: Container(
+        color: const Color(0xfff8ccae),
+        child: _aesKeyBytes == null
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1088,6 +1091,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                 ),
               ],
             ),
+        ),
     );
   }
 }
