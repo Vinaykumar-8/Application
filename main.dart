@@ -976,17 +976,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     final decryptedContainer =
         await EncryptionService.decryptMessage(encryptedContainer, _aesKey!);
 
-    final payloadStart =
-        decryptedContainer.indexOf("-----CNG-PAYLOAD-START-----");
-    final payloadEnd = decryptedContainer.indexOf("-----CNG-PAYLOAD-END-----");
-
-    if (payloadStart == -1 || payloadEnd == -1) {
-      print("Invalid Container");
-      return;
-    }
-
     final payload =
-        decryptedContainer.substring(payloadStart + 27, payloadEnd).trim();
+        decryptedContainer.split("-----CNG-PAYLOAD-START-----")[1]
+      .split("-----CNG-PAYLOAD-END-----")[0]
+      .trim();
 
     final bytes;
     if (data['category'] == "programming") {
