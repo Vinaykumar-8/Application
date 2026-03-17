@@ -729,6 +729,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   String? _receiverPublicKey;
   late String chatRoomId;
 
+  PlatformFile? _selectedFile;
+  String? _selectedRisk;
+  bool _isProcessingFile = false;
+
   @override
   void initState() {
     super.initState();
@@ -816,6 +820,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     final result = await FilePicker.platform.pickFiles();
 
     if (result != null) {
+      setState((){
+        _isProcessingFile = true;
+      });
+      
       final file = result.files.first;
       final fileName = file.name;
       final bytes = file.bytes ?? await File(file.path!).readAsBytes();
@@ -827,6 +835,12 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         classification: classification,
       );
 
+      setState((){
+        _selecteFile = file;
+        _selectedRisk = classification.riskLevel.name;
+        _isProcessingFile = true;
+      });
+      
       final encryptedContainer =
           await EncryptionService.encryptMessage(container, _aesKey!);
 
@@ -1068,14 +1082,14 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                               prefixIcon: IconButton(icon: Icon(Icons.attach_file,
                                                                color: Colors.grey),
                                                     onPressed: pickFile,
-                                                    iconSize: 14),
+                                                    iconSize: 17),
                               filled: true,
                               hintText: "Message Encrypted ...",
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 12),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide(width:2, color: Colors.black),
+                                borderSide: BorderSide(width:1.7, color: Colors.black),
                               ),
                             ),
                           ),
