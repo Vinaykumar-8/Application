@@ -733,6 +733,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   String? _selectedRisk;
   bool _isProcessingFile = false;
 
+
   @override
   void initState() {
     super.initState();
@@ -823,7 +824,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       setState((){
         _isProcessingFile = true;
       });
-      
+
       final file = result.files.first;
       final fileName = file.name;
       final bytes = file.bytes ?? await File(file.path!).readAsBytes();
@@ -836,11 +837,11 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       );
 
       setState((){
-        _selecteFile = file;
+        _selectedFile = file;
         _selectedRisk = classification.riskLevel.name;
-        _isProcessingFile = true;
+        _isProcessingFile = false;
       });
-      
+
       final encryptedContainer =
           await EncryptionService.encryptMessage(container, _aesKey!);
 
@@ -952,7 +953,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: bgColor,
-            border: Border.all(color: borderColor, width:2),
+            border: Border.all(color: borderColor, width: 2),
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16),
               topRight: const Radius.circular(16),
@@ -967,8 +968,9 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
               Text("📎${data['fileName']}"),
               const SizedBox(height: 4),
               Text(
-                "Risk:${data['riskLevel']}",
-                style: TextStyle(color: riskColor, fontWeight: FontWeight.bold),
+                "Risk:${data['riskLevel'].toUpperCase()}",
+                style:
+                    TextStyle(color: borderColor, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(data['neutralized'] ? "Neutralized" : "Not Neutralized"),
@@ -988,19 +990,19 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     final encryptedContainer = data['payload'];
     final fileName = data['fileName'];
 
+    print("Download button pressed");
+
     final decryptedContainer =
         await EncryptionService.decryptMessage(encryptedContainer, _aesKey!);
 
-    print("Download button pressed");
-    
-    final payload =
-        decryptedContainer.split("-----CNG-PAYLOAD-START-----")[1]
-      .split("-----CNG-PAYLOAD-END-----")[0]
-      .trim();
+    final payload = decryptedContainer
+        .split("-----CNG-PAYLOAD-START-----")[1]
+        .split("-----CNG-PAYLOAD-END-----")[0]
+        .trim();
 
-    print("Downloading File : $fileName");
-    print("Categroy: ${data['category']}");
-    
+    print("Downloading file: $fileName");
+    print("Category: ${data['category']}");
+
     final bytes;
     if (data['category'] == "programming") {
       bytes = utf8.encode(payload);
@@ -1020,14 +1022,85 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         backgroundColor: Colors.blue));
   }
 
+  Widget _buildAttachmentPreview(){
+    if(_isProcessingFile){
+      return Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: const[
+            CircularProgressIndicator(),
+            SizedBox(width:10),
+            Text("Analyzing and Neutralizing"),
+          ],
+        ),
+      );
+    }
+
+    if(_selectedFile == null) return const SizedBox();
+
+    Color borderColor;
+    switch(_selectedRisk){
+      case "High":
+      borderColor = Colors.red;
+      break;
+
+      case "medium":
+      borderColor = Colors.orange;
+      break;
+
+      default:
+      borderColor = Colors.green;
+      break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: borderColor, width:2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.insert_drive_file),
+          const SizedBox(width:10),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_selectedFile!.name),
+                Text("Risk: ${_selectedRisk?.toUpperCase()}",
+                style: TextStyle(color: borderColor),
+                ),
+              ],
+            ),
+          ),
+          IconButton(icon: const Icon(Icons.close),
+          onPressed: (){
+            setState((){
+              _selectedFile = null;
+              _selectedRisk = null;
+            });
+          },
+          ),
+
+          IconButton(icon: const Icon(Icons.send),
+          onPressed: pickFile),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.receiverName,
-                   style: TextStyle(color:Colors.green)),
-        backgroundColor: Colors.white,
-        shadowColor: Colors.grey,
+            style: TextStyle(color: Color(0xff0f5011))),
+        backgroundColor: Color(0xffffffff),
+        shadowColor: Color(0xffb5b1b1),
         actions: [
           Icon(_aesKeyBytes != null ? Icons.lock : Icons.lock_open, size: 18),
           const SizedBox(width: 15),
@@ -1036,80 +1109,88 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       body: Container(
         color: const Color(0xFFFFF6F0),
         child: _aesKeyBytes == null
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Colors.teal),
-                  SizedBox(height: 16),
-                  Text("Decrypting Secure Channel..."),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('chat_rooms')
-                        .doc(chatRoomId)
-                        .collection('messages')
-                        .orderBy('timestamp', descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData)
-                        return const Center(child: CircularProgressIndicator());
-
-                      return ListView.builder(
-                        reverse: true,
-                        itemCount: snapshot.data!.docs.length,
-                        itemBuilder: (context, index) =>
-                            _buildMessageBubble(snapshot.data!.docs[index]),
-                      );
-                    },
-                  ),
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Colors.teal),
+                    SizedBox(height: 16),
+                    Text("Decrypting Secure Channel..."),
+                  ],
                 ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            maxLines: null,
-                            decoration: InputDecoration(
-                              prefixIcon: IconButton(icon: Icon(Icons.attach_file,
-                                                               color: Colors.grey),
-                                                    onPressed: pickFile,
-                                                    iconSize: 17),
-                              filled: true,
-                              hintText: "Message Encrypted ...",
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide(width:1.7, color: Colors.black),
+              )
+            : Column(
+                children: [
+                  _buildAttachmentPreview(),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('chat_rooms')
+                          .doc(chatRoomId)
+                          .collection('messages')
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData)
+                          return const Center(
+                              child: CircularProgressIndicator());
+
+                        return ListView.builder(
+                          reverse: true,
+                          itemCount: snapshot.data!.docs.length,
+                          itemBuilder: (context, index) =>
+                              _buildMessageBubble(snapshot.data!.docs[index]),
+                        );
+                      },
+                    ),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _messageController,
+                              maxLines: null,
+                              decoration: InputDecoration(
+                                filled: true,
+                                hintText: "Message Encrypted ...",
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    width: 1.7,
+                                    color: Color(0xff363535),
+                                  ),
+                                ),
+                                prefixIcon: IconButton(
+                                    icon: Icon(
+                                      Icons.attach_file,
+                                      color: Color(0xff6e6565),
+                                    ),
+                                    onPressed: pickFile,
+                                    iconSize: 17),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.teal,
-                          child: IconButton(
-                            icon: const Icon(Icons.send, color: Colors.white),
-                            onPressed: sendMessage,
+                          const SizedBox(width: 8),
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.teal,
+                            child: IconButton(
+                              icon: const Icon(Icons.send, color: Colors.white),
+                              onPressed: sendMessage,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-        ),
+                ],
+              ),
+      ),
     );
   }
 }
