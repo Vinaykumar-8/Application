@@ -1020,7 +1020,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         ],
       ),
       body: Container(
-        color: const Color(0xfff8ccae),
+        color: const Color(0xFFFFF6F0),
         child: _aesKeyBytes == null
           ? const Center(
               child: Column(
