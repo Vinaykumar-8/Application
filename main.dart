@@ -355,6 +355,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
+class SplashScreen extends StatefulWidget{
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>{
+
+  void initState(){
+    super.initState();
+
+    Future.delayed(const Duration(seconds: 2), (){
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
+      );
+    });
+  }
+}
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
