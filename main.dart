@@ -355,19 +355,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-class SplashScreen extends StatefulWidget{
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>{
-
-  void initState(){
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 2), (){
+    Future.delayed(const Duration(seconds: 2), () {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AuthWrapper()),
@@ -376,18 +376,18 @@ class _SplashScreenState extends State<SplashScreen>{
   }
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFF6F0),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children:[
+          children: [
             Image.asset(
               'assets/main_icon.png',
-              width:100,
+              width: 100,
             ),
-            const SizedBox(height:20),
+            const SizedBox(height: 20),
             const Text(
               "Knot",
               style: TextStyle(
@@ -705,6 +705,19 @@ class ChatScreen extends StatelessWidget {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            "Knot",
+            style: TextStyle(
+              color: Color(0xff103553),
+              fontWeight: FontWeight.bold,
+              fontSize: 32,
+              fontFamily: 'roboto',
+            ),
+          ),
+          shadowColor: Colors.blueGrey,
+          backgroundColor: Color(0xffc9f4cb),
+        ),
         body: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('users')
@@ -889,7 +902,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         _isProcessingFile = false;
       });
 
-      final encryptedContainer =
+      /*final encryptedContainer =
           await EncryptionService.encryptMessage(container, _aesKey!);
 
       await FirebaseFirestore.instance
@@ -906,7 +919,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         "category": classification.category.name,
         "neutralized": classification.category == FileCategory.programming,
         "timestamp": FieldValue.serverTimestamp(),
-      });
+      });*/
     }
   }
 
@@ -1136,6 +1149,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              // Cancel
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -1146,17 +1160,21 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey,
                 ),
-                child: const Text("Cancel",
-                style: TextStyle(color: Colors.white),
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
+
+              // Send
               ElevatedButton(
                 onPressed: sendAttachment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: borderColor,
                 ),
-                child: const Text("Send",
-                style: TextStyle(color:Colors.white),
+                child: const Text(
+                  "Send",
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
             ],
@@ -1165,9 +1183,28 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       ),
     );
   }
-  
+
   Future<void> sendAttachment() async {
     if (_selectedFile == null || _aesKey == null) return;
+
+    setState(() {
+      _isProcessingFile = true;
+    });
+
+    final file = _selectedFile!;
+    final fileName = file.name;
+    final bytes = file.bytes ?? await File(file.path!).readAsBytes();
+
+    final classification = FileClassifier.classify(fileName);
+
+    final container = CngContainerBuilder.buildContainer(
+      originalFileName: fileName,
+      fileBytes: bytes,
+      classification: classification,
+    );
+
+    final encryptedContainer =
+        await EncryptionService.encryptMessage(container, _aesKey!);
 
     await FirebaseFirestore.instance
         .collection('chat_rooms')
@@ -1177,10 +1214,17 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       "senderId": FirebaseAuth.instance.currentUser!.uid,
       "receiverId": widget.receiverUid,
       "type": "attachment",
+      "payload": encryptedContainer,
       "fileName": _selectedFile!.name,
       "riskLevel": _selectedRisk ?? "low",
       "neutralized": true,
       "timestamp": FieldValue.serverTimestamp(),
+    });
+
+    setState(() {
+      _selectedFile = null;
+      _selectedRisk = null;
+      _isProcessingFile = false;
     });
   }
 
@@ -1197,90 +1241,106 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           const SizedBox(width: 15),
         ],
       ),
-      body: Container(
-        color: const Color(0xFFFFF6F0),
-        child: _aesKeyBytes == null
-            ? const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: Colors.teal),
-                    SizedBox(height: 16),
-                    Text("Decrypting Secure Channel..."),
-                  ],
-                ),
-              )
-            : Column(
-                children: [
-                  _buildAttachmentPreview(),
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('chat_rooms')
-                          .doc(chatRoomId)
-                          .collection('messages')
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData)
-                          return const Center(
-                              child: CircularProgressIndicator());
-
-                        return ListView.builder(
-                          reverse: true,
-                          itemCount: snapshot.data!.docs.length,
-                          itemBuilder: (context, index) =>
-                              _buildMessageBubble(snapshot.data!.docs[index]),
-                        );
-                      },
+      body: Stack(
+        children: [
+          Container(
+            color: const Color(0xFFFFF6F0),
+            child: _aesKeyBytes == null
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Colors.teal),
+                        SizedBox(height: 16),
+                        Text("Decrypting Secure Channel..."),
+                      ],
                     ),
-                  ),
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _messageController,
-                              maxLines: null,
-                              decoration: InputDecoration(
-                                filled: true,
-                                hintText: "Message Encrypted ...",
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                    width: 1.7,
-                                    color: Color(0xff363535),
+                  )
+                : Column(
+                    children: [
+                      //_buildCenteredPreview(),
+                      Expanded(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('chat_rooms')
+                              .doc(chatRoomId)
+                              .collection('messages')
+                              .orderBy('timestamp', descending: true)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            return ListView.builder(
+                              reverse: true,
+                              itemCount: snapshot.data!.docs.length,
+                              itemBuilder: (context, index) =>
+                                  _buildMessageBubble(
+                                      snapshot.data!.docs[index]),
+                            );
+                          },
+                        ),
+                      ),
+                      SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _messageController,
+                                  maxLines: null,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    hintText: "Message Encrypted ...",
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        width: 1.7,
+                                        color: Color(0xff363535),
+                                      ),
+                                    ),
+                                    prefixIcon: IconButton(
+                                        icon: Icon(
+                                          Icons.attach_file,
+                                          color: Color(0xff6e6565),
+                                        ),
+                                        onPressed: pickFile,
+                                        iconSize: 17),
                                   ),
                                 ),
-                                prefixIcon: IconButton(
-                                    icon: Icon(
-                                      Icons.attach_file,
-                                      color: Color(0xff6e6565),
-                                    ),
-                                    onPressed: pickFile,
-                                    iconSize: 17),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Colors.teal,
+                                child: IconButton(
+                                  icon: const Icon(Icons.send,
+                                      color: Colors.white),
+                                  onPressed: sendMessage,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundColor: Colors.teal,
-                            child: IconButton(
-                              icon: const Icon(Icons.send, color: Colors.white),
-                              onPressed: sendMessage,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                      if (_selectedFile != null || _isProcessingFile)
+                        Positioned.fill(
+                            child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 250),
+                                opacity: 1,
+                                child: Container(
+                                    color: Colors.black.withOpacity(0.4),
+                                    child: Center(
+                                      child: _buildCenteredPreview(),
+                                    ))))
+                    ],
                   ),
-                ],
-              ),
+          ),
+        ],
       ),
     );
   }
