@@ -1057,6 +1057,16 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   }
 
   Future<void> downloadAttachment(Map<String, dynamic> data) async {
+
+    try{
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Download started"))
+      );
+    
+    if(_aesKey == null){
+      throw "Encryption key not ready";
+    }
+    
     final encryptedContainer = data['payload'];
     final fileName = data['fileName'];
 
@@ -1064,6 +1074,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
     final decryptedContainer =
         await EncryptionService.decryptMessage(encryptedContainer, _aesKey!);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Decryption successful")),
+    );
 
     final payload = decryptedContainer
         .split("-----CNG-PAYLOAD-START-----")[1]
@@ -1080,6 +1094,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       bytes = base64Decode(payload);
     }
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Payload extracted")),
+    );
+
     final directory = await getApplicationDocumentsDirectory();
     final file = File("${directory.path}/$fileName");
 
@@ -1090,6 +1108,15 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blue));
+    }
+    catch(e){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Download failed: $e"),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   String _formatFileSize(int bytes) {
@@ -1121,7 +1148,9 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       );
     }
 
-    if (_selectedFile == null) return const SizedBox();
+    if (_selectedFile == null && !_isProcessingFile) {
+      return const SizedBox();
+    }
 
     Color borderColor;
 
@@ -1331,7 +1360,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
               )
             : Column(
                 children: [
-                  //_buildCenteredPreview(),
+                  _buildCenteredPreview(),
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
@@ -1398,7 +1427,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                       ),
                     ),
                   ),
-                  if (_selectedFile != null || _isProcessingFile)
+                  /*if (_selectedFile != null || _isProcessingFile)
                     Positioned.fill(
                         child: AnimatedOpacity(
                             duration: const Duration(milliseconds: 250),
@@ -1407,7 +1436,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                                 color: Colors.black.withOpacity(0.4),
                                 child: Center(
                                   child: _buildCenteredPreview(),
-                                ))))
+                                ))))*/
                 ],
               ),
       ),
