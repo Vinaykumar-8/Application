@@ -378,7 +378,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFF6F0),
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -387,13 +387,14 @@ class _SplashScreenState extends State<SplashScreen> {
               'assets/main_icon.png',
               width: 100,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 80),
             const Text(
               "Knot",
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: Colors.teal,
+                fontFamily: 'roboto',
               ),
             ),
           ],
@@ -717,6 +718,11 @@ class ChatScreen extends StatelessWidget {
           ),
           shadowColor: Colors.blueGrey,
           backgroundColor: Color(0xffc9f4cb),
+          toolbarHeight: 56,
+          /*leading: Image.asset(
+              'assets/main_icon.png',
+              width: 20,
+            )*/
         ),
         body: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -743,6 +749,10 @@ class ChatScreen extends StatelessWidget {
                   String friendName = data['name'] ?? "User";
 
                   return ListTile(
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(color: Colors.black, width: 1.0),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
                     leading: CircleAvatar(
                       backgroundColor: Colors.teal.shade700,
                       child: Text(friendName[0].toUpperCase(),
@@ -1082,6 +1092,16 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         backgroundColor: Colors.blue));
   }
 
+  String _formatFileSize(int bytes) {
+    if (bytes >= 1024 * 1024) {
+      return "${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB";
+    } else if (bytes >= 1024) {
+      return "${(bytes / 1024).toStringAsFixed(2)} KB";
+    } else {
+      return "$bytes B";
+    }
+  }
+
   Widget _buildCenteredPreview() {
     if (_isProcessingFile) {
       return Container(
@@ -1133,12 +1153,19 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.insert_drive_file, size: 40),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: _buildFilePreview(),
+          ),
           const SizedBox(height: 10),
           Text(
             _selectedFile!.name,
             textAlign: TextAlign.center,
             style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Text(
+            _formatFileSize(_selectedFile!.size),
+            style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1182,6 +1209,54 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildFilePreview() {
+    if (_selectedFile == null) return const SizedBox();
+
+    final file = _selectedFile!;
+    final ext = file.name.split('.').last.toLowerCase();
+
+    if (['jpg', 'jpeg', 'png'].contains(ext)) {
+      if (file.bytes != null) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.memory(
+            file.bytes!,
+            width: double.infinity,
+            height: 180,
+            fit: BoxFit.cover,
+          ),
+        );
+      } else if (file.path != null) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.file(
+            File(file.path!),
+            height: 180,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
+        );
+      }
+    }
+    return _getFileIcon(file.name);
+  }
+
+  Icon _getFileIcon(String name) {
+    final ext = name.split('.').last.toLowerCase();
+
+    if (['jpg', 'jpeg', 'png'].contains(ext)) {
+      return const Icon(Icons.image, size: 50, color: Colors.blue);
+    } else if (ext == 'pdf') {
+      return const Icon(Icons.picture_as_pdf, size: 50, color: Colors.red);
+    } else if (['zip', 'rar'].contains(ext)) {
+      return const Icon(Icons.archive, size: 50, color: Colors.orange);
+    } else if (['mp4', 'mov'].contains(ext)) {
+      return const Icon(Icons.video_file, size: 50, color: Colors.purple);
+    } else {
+      return const Icon(Icons.insert_drive_file, size: 50, color: Colors.grey);
+    }
   }
 
   Future<void> sendAttachment() async {
@@ -1241,106 +1316,100 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           const SizedBox(width: 15),
         ],
       ),
-      body: Stack(
-        children: [
-          Container(
-            color: const Color(0xFFFFF6F0),
-            child: _aesKeyBytes == null
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: Colors.teal),
-                        SizedBox(height: 16),
-                        Text("Decrypting Secure Channel..."),
-                      ],
+      body: Container(
+        color: const Color(0xFFFFF6F0),
+        child: _aesKeyBytes == null
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Colors.teal),
+                    SizedBox(height: 16),
+                    Text("Decrypting Secure Channel..."),
+                  ],
+                ),
+              )
+            : Column(
+                children: [
+                  //_buildCenteredPreview(),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('chat_rooms')
+                          .doc(chatRoomId)
+                          .collection('messages')
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        return ListView.builder(
+                          reverse: true,
+                          itemCount: snapshot.data!.docs.length,
+                          itemBuilder: (context, index) =>
+                              _buildMessageBubble(snapshot.data!.docs[index]),
+                        );
+                      },
                     ),
-                  )
-                : Column(
-                    children: [
-                      //_buildCenteredPreview(),
-                      Expanded(
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('chat_rooms')
-                              .doc(chatRoomId)
-                              .collection('messages')
-                              .orderBy('timestamp', descending: true)
-                              .snapshots(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                            return ListView.builder(
-                              reverse: true,
-                              itemCount: snapshot.data!.docs.length,
-                              itemBuilder: (context, index) =>
-                                  _buildMessageBubble(
-                                      snapshot.data!.docs[index]),
-                            );
-                          },
-                        ),
-                      ),
-                      SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _messageController,
-                                  maxLines: null,
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    hintText: "Message Encrypted ...",
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 14),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(
-                                        width: 1.7,
-                                        color: Color(0xff363535),
-                                      ),
-                                    ),
-                                    prefixIcon: IconButton(
-                                        icon: Icon(
-                                          Icons.attach_file,
-                                          color: Color(0xff6e6565),
-                                        ),
-                                        onPressed: pickFile,
-                                        iconSize: 17),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _messageController,
+                              maxLines: null,
+                              decoration: InputDecoration(
+                                filled: true,
+                                hintText: "Message Encrypted ...",
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                    width: 1.7,
+                                    color: Color(0xff363535),
                                   ),
                                 ),
+                                prefixIcon: IconButton(
+                                    icon: Icon(
+                                      Icons.attach_file,
+                                      color: Color(0xff6e6565),
+                                    ),
+                                    onPressed: pickFile,
+                                    iconSize: 17),
                               ),
-                              const SizedBox(width: 8),
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Colors.teal,
-                                child: IconButton(
-                                  icon: const Icon(Icons.send,
-                                      color: Colors.white),
-                                  onPressed: sendMessage,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.teal,
+                            child: IconButton(
+                              icon: const Icon(Icons.send, color: Colors.white),
+                              onPressed: sendMessage,
+                            ),
+                          ),
+                        ],
                       ),
-                      if (_selectedFile != null || _isProcessingFile)
-                        Positioned.fill(
-                            child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 250),
-                                opacity: 1,
-                                child: Container(
-                                    color: Colors.black.withOpacity(0.4),
-                                    child: Center(
-                                      child: _buildCenteredPreview(),
-                                    ))))
-                    ],
+                    ),
                   ),
-          ),
-        ],
+                  if (_selectedFile != null || _isProcessingFile)
+                    Positioned.fill(
+                        child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 250),
+                            opacity: 1,
+                            child: Container(
+                                color: Colors.black.withOpacity(0.4),
+                                child: Center(
+                                  child: _buildCenteredPreview(),
+                                ))))
+                ],
+              ),
       ),
     );
   }
