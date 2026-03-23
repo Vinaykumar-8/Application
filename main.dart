@@ -193,7 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         children: [
           Positioned.fill(
             child: Image.asset(
-              'assets/register_icon.jpg',
+              'assets/register_icon.jpeg',
               fit: BoxFit.cover,
             ),
           ),
