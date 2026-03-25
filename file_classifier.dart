@@ -12,7 +12,7 @@ class FileClassifier {
   ];
 
   static const List<String> archiveExtensions = [
-    'zip', 'rar', '7z'
+    'zip', 'rar', '7z', 'pka'
   ];
 }
 
