@@ -889,9 +889,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   }
 
   Future<void> pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.any,
-    );
+    final result = await FilePicker.platform.pickFiles();
 
     if (result != null) {
       setState(() {
@@ -940,7 +938,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
     if (data['type'] == 'attachment') {
-      return _buildAttachmentBubble(data);
+      return _buildAttachmentBubble(data,doc.id);
     }
     bool isMe = data['senderId'] == FirebaseAuth.instance.currentUser!.uid;
 
@@ -994,13 +992,40 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
-  Widget _buildAttachmentBubble(Map<String, dynamic> data) {
+  Widget _buildAttachmentBubble(Map<String, dynamic> data, String messageId) {
     bool isMe = data['senderId'] == _auth.currentUser!.uid;
     Color bgColor;
     Color borderColor;
     Color riskColor = Colors.teal;
+    String currentRisk = data['riskLevel'];
 
-    switch (data['riskLevel']) {
+    bool _isImage(String fileName){
+      final ext = fileName.split('.').last.toLowerCase();
+      return ['jpg','jpeg','png'].contains(ext);
+    }
+
+    late Future<Directory> directoryFuture;
+
+    @override
+    void initState(){
+    super.initState();
+    directoryFuture= getApplicationDocumentsDirectory();
+    List<String> ids = [_auth.currentUser!.uid, widget.receiverUid];
+    ids.sort();
+    chatRoomId = ids.join('_');
+
+    _loadKeys();
+    }
+
+    if (data['neutralized'] == true) {
+      if (currentRisk == 'high') {
+        currentRisk = "medium";
+      } else if (currentRisk == "medium") {
+        currentRisk = "low";
+      }
+    }
+
+    switch (currentRisk) {
       case "high":
         bgColor = Colors.red.shade50;
         borderColor = Colors.red.shade700;
@@ -1038,6 +1063,36 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
             crossAxisAlignment:
                 isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
+              if(data['download']==true && _isImage(data['fileName']))
+              FutureBuilder(
+                future: directoryFuture,
+                builder: (context, snapshot){
+                  if(!snapshot.hasData) return const SizedBox();
+
+                  final directory = snapshot.data!;
+                  final filePath = "${directory.path}/${data['fileName']}";
+                  final file = File(filePath);
+
+                  if(!file.existsSync()){
+                    print("File not found at : ${filePath}");
+                    return const SizedBox();
+                  }
+
+                  return Column(
+                    children:[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          file,
+                          height: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                  );
+                }
+              ),
               Text("📎${data['fileName']}"),
               const SizedBox(height: 4),
               Text(
@@ -1049,7 +1104,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
               Text(data['neutralized'] ? "Neutralized" : "Not Neutralized"),
               const SizedBox(height: 6),
               ElevatedButton(
-                onPressed: () => downloadAttachment(data),
+                onPressed: () => downloadAttachment(data,messageId),
                 child: const Text("Download"),
               ),
             ],
@@ -1059,7 +1114,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
-  Future<void> downloadAttachment(Map<String, dynamic> data) async {
+  Future<void> downloadAttachment(Map<String, dynamic> data, String messageId) async {
     try {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Download started")));
@@ -1118,6 +1173,14 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         ),
       );
     }
+    await FirebaseFirestore.instance
+    .collection('chat_rooms')
+    .doc(chatRoomId)
+    .collection('messages')
+    .doc(messageId)
+    .update({
+  "downloaded": true,
+  });
   }
 
   String _formatFileSize(int bytes) {
@@ -1333,15 +1396,15 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     });
   }
 
-  Widget _buildPreviewOverlay(){
+  Widget _buildPreviewOverlay() {
     return Positioned.fill(
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 250),
-        opacity:1,
+        opacity: 1,
         child: Stack(
-          children:[
+          children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX:8, sigmaY: 8),
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Container(
                 color: Colors.black.withOpacity(0.3),
               ),
@@ -1368,92 +1431,92 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           const SizedBox(width: 15),
         ],
       ),
-      body: 
-      Stack(
-        children:[
+      body: Stack(
+        children: [
           Container(
-        color: const Color(0xFFFFF6F0),
-        child: _aesKeyBytes == null
-            ? const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: Colors.teal),
-                    SizedBox(height: 16),
-                    Text("Decrypting Secure Channel..."),
-                  ],
-                ),
-              )
-            : Column(
-                children: [
-                  _buildCenteredPreview(),
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('chat_rooms')
-                          .doc(chatRoomId)
-                          .collection('messages')
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-                        return ListView.builder(
-                          reverse: true,
-                          itemCount: snapshot.data!.docs.length,
-                          itemBuilder: (context, index) =>
-                              _buildMessageBubble(snapshot.data!.docs[index]),
-                        );
-                      },
+            color: const Color(0xFFFFF6F0),
+            child: _aesKeyBytes == null
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Colors.teal),
+                        SizedBox(height: 16),
+                        Text("Decrypting Secure Channel..."),
+                      ],
                     ),
-                  ),
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _messageController,
-                              maxLines: null,
-                              decoration: InputDecoration(
-                                filled: true,
-                                hintText: "Message Encrypted ...",
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                    width: 1.7,
-                                    color: Color(0xff363535),
+                  )
+                : Column(
+                    children: [
+                      Expanded(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('chat_rooms')
+                              .doc(chatRoomId)
+                              .collection('messages')
+                              .orderBy('timestamp', descending: true)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            return ListView.builder(
+                              reverse: true,
+                              itemCount: snapshot.data!.docs.length,
+                              itemBuilder: (context, index) =>
+                                  _buildMessageBubble(
+                                      snapshot.data!.docs[index]),
+                            );
+                          },
+                        ),
+                      ),
+                      SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _messageController,
+                                  maxLines: null,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    hintText: "Message Encrypted ...",
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        width: 1.7,
+                                        color: Color(0xff363535),
+                                      ),
+                                    ),
+                                    prefixIcon: IconButton(
+                                        icon: Icon(
+                                          Icons.attach_file,
+                                          color: Color(0xff6e6565),
+                                        ),
+                                        onPressed: pickFile,
+                                        iconSize: 17),
                                   ),
                                 ),
-                                prefixIcon: IconButton(
-                                    icon: Icon(
-                                      Icons.attach_file,
-                                      color: Color(0xff6e6565),
-                                    ),
-                                    onPressed: pickFile,
-                                    iconSize: 17),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Colors.teal,
+                                child: IconButton(
+                                  icon: const Icon(Icons.send,
+                                      color: Colors.white),
+                                  onPressed: sendMessage,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundColor: Colors.teal,
-                            child: IconButton(
-                              icon: const Icon(Icons.send, color: Colors.white),
-                              onPressed: sendMessage,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  /*if (_selectedFile != null || _isProcessingFile)
+                      /*if (_selectedFile != null || _isProcessingFile)
                     Positioned.fill(
                         child: AnimatedOpacity(
                             duration: const Duration(milliseconds: 250),
@@ -1463,13 +1526,13 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                                 child: Center(
                                   child: _buildCenteredPreview(),
                                 ))))*/
-                ],
-              ),
+                    ],
+                  ),
+          ),
+          if (_selectedFile != null || _isProcessingFile)
+            _buildPreviewOverlay(),
+        ],
       ),
-          ],
-        if(_selectedFile !=null || _isProcessingFile)
-        _buildPreviewOverlay(),
-        ),
     );
   }
 }
