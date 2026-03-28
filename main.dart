@@ -805,9 +805,12 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
   String? _selectedRisk;
   bool _isProcessingFile = false;
 
+  late Future<Directory> directoryFuture;
+  
   @override
   void initState() {
     super.initState();
+    directoryFuture = getApplicationDocumentsDirectory();
     List<String> ids = [_auth.currentUser!.uid, widget.receiverUid];
     ids.sort();
     chatRoomId = ids.join('_');
@@ -992,6 +995,39 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
+  void _openFullImage(File file){
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder:(_){
+        return GestureDetector(
+          onTap: ()=> Navigator.pop(context),
+          child: Stack(
+            children:[
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX:10, sigmaY:10),
+                child: Container(
+                  color:Colors.black.withOpacity(0.6),
+                ),
+              ),
+              Center(
+                child: Hero(
+                  tag: file.path,
+                  child: InteractiveViewer(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.file(file),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
   Widget _buildAttachmentBubble(Map<String, dynamic> data, String messageId) {
     bool isMe = data['senderId'] == _auth.currentUser!.uid;
     Color bgColor;
@@ -1002,19 +1038,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     bool _isImage(String fileName){
       final ext = fileName.split('.').last.toLowerCase();
       return ['jpg','jpeg','png'].contains(ext);
-    }
-
-    late Future<Directory> directoryFuture;
-
-    @override
-    void initState(){
-    super.initState();
-    directoryFuture= getApplicationDocumentsDirectory();
-    List<String> ids = [_auth.currentUser!.uid, widget.receiverUid];
-    ids.sort();
-    chatRoomId = ids.join('_');
-
-    _loadKeys();
     }
 
     if (data['neutralized'] == true) {
@@ -1077,18 +1100,43 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                     print("File not found at : ${filePath}");
                     return const SizedBox();
                   }
-
                   return Column(
                     children:[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          file,
-                          height: 150,
-                          fit: BoxFit.cover,
-                        ),
+                      if(_isImage(data['fileName']))
+                      FutureBuilder(
+                        future: directoryFuture,
+                        builder: (context, snapshot){
+
+                          if(!snapshot.hasData) return const SizedBox();
+                          final directory = snapshot.data!;
+                          final filePath = "${directory.path}/${data['fileName']}";
+                          final file = File(filePath);
+
+                          if(!file.existsSync()) return const SizedBox();
+                          return Column(
+                            children:[
+                              GestureDetector(
+                                onTap: (){
+                                  _openFullImage(file);
+                                },
+                                child: Hero(
+                                  tag: file.path,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.file(
+                                      file,
+                                      height: 150,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                            ],
+                          );
+                        },
                       ),
-                      const SizedBox(height: 6),
                     ],
                   );
                 }
