@@ -1086,7 +1086,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
             crossAxisAlignment:
                 isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              if(data['download']==true && _isImage(data['fileName']))
+              if(_isImage(data['fileName']))
               FutureBuilder(
                 future: directoryFuture,
                 builder: (context, snapshot){
@@ -1096,25 +1096,10 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                   final filePath = "${directory.path}/${data['fileName']}";
                   final file = File(filePath);
 
-                  if(!file.existsSync()){
-                    print("File not found at : ${filePath}");
-                    return const SizedBox();
-                  }
+                  if(!file.existsSync()) return const SizedBox();
+        
                   return Column(
                     children:[
-                      if(_isImage(data['fileName']))
-                      FutureBuilder(
-                        future: directoryFuture,
-                        builder: (context, snapshot){
-
-                          if(!snapshot.hasData) return const SizedBox();
-                          final directory = snapshot.data!;
-                          final filePath = "${directory.path}/${data['fileName']}";
-                          final file = File(filePath);
-
-                          if(!file.existsSync()) return const SizedBox();
-                          return Column(
-                            children:[
                               GestureDetector(
                                 onTap: (){
                                   _openFullImage(file);
@@ -1137,9 +1122,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
                           );
                         },
                       ),
-                    ],
-                  );
-                }
               ),
               Text("📎${data['fileName']}"),
               const SizedBox(height: 4),
