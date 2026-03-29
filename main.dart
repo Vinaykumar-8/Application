@@ -899,6 +899,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         _isProcessingFile = true;
       });
 
+      try{
       final file = result.files.first;
       final fileName = file.name;
       final bytes = file.bytes ?? await File(file.path!).readAsBytes();
@@ -913,9 +914,22 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       setState(() {
         _selectedFile = file;
         _selectedRisk = classification.riskLevel.name;
-        _isProcessingFile = false;
       });
+      }
+      catch(e){
+        print("File processing error $e");
 
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Unsupported unsafe file"),
+                         backgroundColor: Colors.red,
+        );
+      }
+      finally{
+        setState((){
+          _isProcessingFile = false;
+        });
+      }
+          
       /*final encryptedContainer =
           await EncryptionService.encryptMessage(container, _aesKey!);
 
@@ -1161,6 +1175,12 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       final decryptedContainer =
           await EncryptionService.decryptMessage(encryptedContainer, _aesKey!);
 
+      if(!decryptedContainer.contains("CNG-PAYLOAD") ||
+         !decryptedContainer.contains("-----CNG-PAYLOAD-START-----")||
+         !decryptedContainer.contains("-----CNG_PAYLOAD-END-----")){
+        throw "Invalid container format";
+         }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Decryption successful")),
       );
@@ -1177,11 +1197,16 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       print("Downloading file: $fileName");
       print("Category: ${data['category']}");
 
-      final bytes;
+      late List<int> bytes;
+      try{
       if (data['category'] == "programming") {
         bytes = utf8.encode(payload);
       } else {
         bytes = base64Decode(payload);
+      }
+      }
+      catch(e){
+        throw "Invalid encoding format";
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1395,9 +1420,25 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
     final file = _selectedFile!;
     final newName = file.name;
-    final fileName = newName.replaceAll(RegExp(r'[^w\.\-]'), '_');
+    final fileName = newName.replaceAll(RegExp(r'[^\w\.\-]'), '_');
     final bytes = file.bytes ?? await File(file.path!).readAsBytes();
 
+    if(file.size>10*1024*1024){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("File is too large MAX(10 MB)",
+                        style: TextStyle(color: Colors.green,
+                                        fontWeight: FontWeight.bold),
+        ),
+          backgroundColor: Colors.yellow,
+          duration: Duration(milliseconds: 300),
+          setState((){
+            _isProcessingFile = false;
+            return;
+          })
+      )
+    }
+        
     final classification = FileClassifier.classify(fileName);
 
     final container = CngContainerBuilder.buildContainer(
@@ -1422,7 +1463,8 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       "receiverId": widget.receiverUid,
       "type": "attachment",
       "payload": encryptedContainer,
-      "fileName": _selectedFile!.name,
+      "category": classification.category.name,
+      "fileName": fileName,
       "riskLevel": _selectedRisk ?? "low",
       "neutralized": true,
       "timestamp": FieldValue.serverTimestamp(),
