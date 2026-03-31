@@ -14,7 +14,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:mime/mime.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:ui';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1020,7 +1021,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
           child: Stack(
             children:[
               BackdropFilter(
-                filter: ImageFilter.blur(sigmaX:10, sigmaY:10),
+                filter: ui.ImageFilter.blur(sigmaX:10, sigmaY:10),
                 child: Container(
                   color:Colors.black.withOpacity(0.6),
                 ),
@@ -1042,6 +1043,11 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       },
     );
   }
+
+  bool _isImage(String fileName){
+      final ext = fileName.split('.').last.toLowerCase();
+      return ['jpg','jpeg','png'].contains(ext);
+  }
   
   Widget _buildAttachmentBubble(Map<String, dynamic> data, String messageId) {
     bool isMe = data['senderId'] == _auth.currentUser!.uid;
@@ -1049,11 +1055,6 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     Color borderColor;
     Color riskColor = Colors.teal;
     String currentRisk = data['riskLevel'];
-
-    bool _isImage(String fileName){
-      final ext = fileName.split('.').last.toLowerCase();
-      return ['jpg','jpeg','png'].contains(ext);
-    }
 
     if (data['neutralized'] == true) {
       if (currentRisk == 'high') {
@@ -1159,6 +1160,30 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     );
   }
 
+  Future<File> _generateThumbnail(File originalFile) async {
+    final bytes = await originalFile.readAsBytes();
+
+    final codec = await ui.instantiateImageCodec(
+      bytes,
+      targetWidth: 200,
+    );
+
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    final thumbBytes = byteData!.buffer.asUint8List();
+    final thumbPath = originalFile.path.replaceAllMapped(
+      RegExp(r'\.\w+$'),
+      (match) => '_thumb.png',
+    );
+
+    final thumbFile = File(thumbPath);
+    await thumbFile.writeAsBytes(thumbBytes);
+
+    return thumbFile;
+  }
+  
   Future<void> downloadAttachment(Map<String, dynamic> data, String messageId) async {
     try {
       ScaffoldMessenger.of(context)
@@ -1185,6 +1210,20 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Decryption successful")),
       );
+
+      final mimeType = lookupMimeType(fileName, headerBytes: bytes);
+      
+      if(_isImage(fileName)){
+        if(mimeType == null || !mimeType.startsWith('image\'')){
+          throw "Invalid image file";
+        }
+        if(bytes.length>5*1024*1024){
+          throw "Image is too large to process safely";
+          setState((){
+            _isProcessingFile = false;
+          });
+        }
+      }
 
       if(!decryptedContainer.contains('CNG-CONTAINER')){
         throw "Invalid container format";
@@ -1501,7 +1540,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         child: Stack(
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Container(
                 color: Colors.black.withOpacity(0.3),
               ),
