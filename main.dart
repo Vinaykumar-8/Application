@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:crypto/crypto.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1167,6 +1168,7 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     final codec = await ui.instantiateImageCodec(
       bytes,
       targetWidth: 200,
+      targetHeight: 200,
     );
 
     final frame = await codec.getNextFrame();
@@ -1699,7 +1701,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   bool _isProcessing = false;
 
-  Future<void> (String fromUid, String? fromName) async {
+  Future<void> _acceptRequest(String fromUid, String? fromName) async {
     setState(() {
       _isProcessing = true;
     });
@@ -1748,6 +1750,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
           .doc(myUid)
           .set({
         'status': statusConnected,
+        'name': receiverData['name'],
         'targetUid': myUid,
         'keyType': 'X25519',
       }, SetOptions(merge: true));
