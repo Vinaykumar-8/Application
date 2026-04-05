@@ -1186,6 +1186,25 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
 
     return thumbFile;
   }
+
+  bool _isValidImage(List<int> bytes){
+    if(bytes.length< 4) return false;
+    if(bytes[0]==0xFF && bytes[1]==0xDB) return true
+      if(bytes[0]==0x89 &&
+         bytes[1]==0x50 &&
+         bytes[2]==0x4E &&
+         bytes[3]==0x47) return true;
+    return false;
+  }
+
+  bool _isValidPDF(List<int> bytes){
+    if(bytes.length<4) return false;
+
+    return bytes[0]==0x25 &&
+      bytes[1]==0x50 &&
+      bytes[2]==0x44 &&
+      bytes[3]==0x46;
+  }
   
   Future<void> downloadAttachment(Map<String, dynamic> data, String messageId) async {
     try {
@@ -1217,17 +1236,40 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
       final mimeType = lookupMimeType(fileName, headerBytes: bytes);
       
       if(_isImage(fileName)){
+        if(!_isValidImage(bytes){
+          throw "Invalid image format";
+        }
         if(mimeType == null || !mimeType.startsWith('image\'')){
           throw "Invalid image file";
         }
         if(bytes.length>5*1024*1024){
-          throw "Image is too large to process safely";
-          setState((){
-            _isProcessingFile = false;
-          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("File size is too large (5MB MAX) for image"),
+                           backgroundColor: Colors.yellow,
+          );
         }
       }
 
+      if(fileName.endsWith('.pdf')){
+        if(!_isValidPDF(bytes)){
+          ScaffoldMessenger.of(context).showSnackBar(
+            content: Text("Invalid pdf format"),
+          );
+          return;
+        }
+        if(mimeType ! ='application/pdf' || mimeType == null){
+          ScaffoldMessenger.of(context).showSnackBar(
+            content: Text("Invalid pdf format"),
+          );
+          return;
+        }
+        if(bytes.length>10*10124*1024){
+          ScaffoldMessenger.of(context).showSnackBar(
+            content: Text("File size is too large (10 MB MAX) for pdf"),
+          );
+        }
+      }
+            
       if(!decryptedContainer.contains('CNG-CONTAINER')){
         throw "Invalid container format";
       }
