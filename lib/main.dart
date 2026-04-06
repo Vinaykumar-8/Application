@@ -16,6 +16,8 @@ import 'package:mime/mime.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:crypto/crypto.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1240,6 +1242,26 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
     return thumbFile;
   }
 
+  bool _isValidImage(List<int> bytes){
+    if(bytes.length<4) return false;
+    if(bytes[0]==0xFF && bytes[1]==0xD8) return true;
+    if(bytes[0]==0x89 &&
+       bytes[1]==0x50 &&
+       bytes[2]==0x4E &&
+       bytes[3]==0x47) return true;
+    
+    return false;
+  }
+
+  bool _isValidPDF(List<int> bytes){
+    if(bytes.length<4) return false;
+
+    return bytes[0]==0x25 &&
+      bytes[1]==0x50 &&
+      bytes[2]==0x44 &&
+      bytes[2]==0x46;
+  }
+  
   Future<void> downloadAttachment(
       Map<String, dynamic> data, String messageId) async {
     try {
@@ -1290,6 +1312,16 @@ class _IndividualChatPageState extends State<IndividualChatPage> {
         }
       } catch (e) {
         throw "Corrupted payload data";
+      }
+
+      final computedHash = sha256.convert(bytes).toString();
+
+      if(computedHash ! = data['hash']){
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("The file is likely tampered"),
+                         backgroundColor: Colors.red.shade700,
+                         duration: Duration(milliseconds:600),
+        ));
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
