@@ -27,7 +27,7 @@ Still find it like other applications?
 
 What is Neutralization?
 - What and how is the Neutralization is done? Does it change the file's content, or tamper the file?
-  Absolutetly not!
+  Absolutetly not! The techniques it includes are Sandboxing, Heuristic-Analyis, Isolating attachments etc.
   
 ## Does it involve any such machine learning model for the analysis?
-- Short answer is No.
+- Short answer is No. (It uses the Heuristic-Analysis).
