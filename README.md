@@ -12,6 +12,7 @@ Still don't get it?
   Entity A and B both are good friends and they are even connected with each other through a communication application, sharing messages and attachments with each other. Say, the entity A sent a malicious file "harmless.exe" with a harmless wrapper to B, now the moment B downloads it through the application then the malicious file gets triggered silenty compromising the B's device. This whole concept is what we know "Post-Decryption Problem".
 
 But, we have solution now!
+
 -We present you Knot, an E2EE application for communication, this application is responsible identifying the nature of the file and then taking appropriate action.
 -Wait! do you think we are stopping you from sending a file that might be for fun? No, Know doesn't stops you from sending anything (It is obvious that I won't wish an application to prevent me from sending a simple programming file to my friend), but it analyses the attachments nature and other specification before you download that is all the analyses happens on the receiver's side.
 
@@ -22,7 +23,11 @@ Still find it like other applications?
 
 - LOW-- No or minimal risk involved.
 - MEDIUM-- Can be risky to download hence the file gets neutralized properly.
-- HIGH-- Highly risky to donwload the, hence the file is neutralized if possible, but if not then the user is not advised to open such file.
+- HIGH-- Highly risky to download the, hence the file is neutralized if possible, but if not then the user is not advised to open such file.
 
+What is Neutralization?
+- What and how is the Neutralization is done? Does it change the file's content, or tamper the file?
+  Absolutetly not!
+  
 ## Does it involve any such machine learning model for the analysis?
 - Short answer is No.
