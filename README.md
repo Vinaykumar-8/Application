@@ -5,7 +5,7 @@ A secured communication application using the technique of E2EE (End-To-End Encr
 ## What's so special?
 
 Ever wondered why the existing communication application doesn't stops you from sending a attachment/file that might be harmful?
--NO!!? Then give it a go, you will get to know that if you can send a malicious file to the other, then the same can happen with you. Now ask yourself is it still safe using the applications?
+- NO!!? Then give it a go, you will get to know that if you can send a malicious file to the other, then the same can happen with you. Now ask yourself is it still safe using the applications?
 
 Still don't get it?
 - Let us assume one example:
@@ -13,8 +13,8 @@ Still don't get it?
 
 But, we have solution now!
 
--We present you Knot, an E2EE application for communication, this application is responsible identifying the nature of the file and then taking appropriate action.
--Wait! do you think we are stopping you from sending a file that might be for fun? No, Knot doesn't stops you from sending anything (It is obvious that I won't wish an application to prevent me from sending a simple programming file to my friend), but it analyses the attachments nature and other specification before you download that is all the analyses happens on the receiver's side.
+- We present you Knot, an E2EE application for communication, this application is responsible identifying the nature of the file and then taking appropriate action.
+- Wait! do you think we are stopping you from sending a file that might be for fun? No, Knot doesn't stops you from sending anything (It is obvious that I won't wish an application to prevent me from sending a simple programming file to my friend), but it analyses the attachments nature and other specification before you download that is all the analyses happens on the receiver's side.
 
 Still find it like other applications?
 - Maybe, this section convince you trying it.
