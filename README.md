@@ -1,3 +1,5 @@
+<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/42a76a6f-d75c-4e01-aa12-a7e62b756400" />
+
 # Knot
 
 A secured communication application using the technique of E2EE (End-To-End Encryption).
