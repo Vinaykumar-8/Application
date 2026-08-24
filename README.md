@@ -1,4 +1,4 @@
-<img width="40" height="40" alt="image" src="https://github.com/user-attachments/assets/42a76a6f-d75c-4e01-aa12-a7e62b756400" />
+<img width="80" height="80" alt="image" src="https://github.com/user-attachments/assets/42a76a6f-d75c-4e01-aa12-a7e62b756400" />
 
 # Knot
 
